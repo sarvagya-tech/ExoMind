@@ -1,4 +1,3 @@
-import type { Request, Response } from "express";
 import { deleteUserMemory, listUserMemories } from "../lib/mem0.js";
 import {
     createMemoryForUser,
@@ -12,7 +11,7 @@ import {
     updateMemorySchema,
 } from "../validators/memory.validator.js";
 
-function parseMemoryId(params: Request["params"]) {
+function parseMemoryId(params) {
     const parsed = memoryIdParamSchema.safeParse(params);
 
     if (!parsed.success) {
@@ -25,7 +24,7 @@ function parseMemoryId(params: Request["params"]) {
     return parsed.data;
 }
 
-function parseCreateBody(body: unknown) {
+function parseCreateBody(body) {
     const parsed = createMemorySchema.safeParse(body);
 
     if (!parsed.success) {
@@ -38,7 +37,7 @@ function parseCreateBody(body: unknown) {
     return parsed.data;
 }
 
-function parseUpdateBody(body: unknown) {
+function parseUpdateBody(body) {
     const parsed = updateMemorySchema.safeParse(body);
 
     if (!parsed.success) {
@@ -51,18 +50,18 @@ function parseUpdateBody(body: unknown) {
     return parsed.data;
 }
 
-export async function listMemories(req: Request, res: Response) {
+export async function listMemories(req, res) {
     const memories = await listUserMemories(req.session.user.id);
     res.json(memories);
 }
 
-export async function createMemory(req: Request, res: Response) {
+export async function createMemory(req, res) {
     const input = parseCreateBody(req.body);
     const memory = await createMemoryForUser(req.session.user.id, input);
     res.status(201).json(memory);
 }
 
-export async function updateMemory(req: Request, res: Response) {
+export async function updateMemory(req, res) {
     const { memoryId } = parseMemoryId(req.params);
     const input = parseUpdateBody(req.body);
     const memory = await updateMemoryForUser(
@@ -73,7 +72,7 @@ export async function updateMemory(req: Request, res: Response) {
     res.json(memory);
 }
 
-export async function deleteMemory(req: Request, res: Response) {
+export async function deleteMemory(req, res) {
     const { memoryId } = parseMemoryId(req.params);
     await deleteUserMemory(memoryId);
     res.status(204).send();
