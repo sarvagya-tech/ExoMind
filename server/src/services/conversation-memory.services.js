@@ -7,7 +7,7 @@ import {
     updateConversationSummary,
 } from "../repository/conversation.repository.js";
 import { findMessagesByConversationId } from "../repository/message.repository.js";
-import { NotFoundError } from "../types/app-error.js";
+import { NotFoundError } from "../utils/app.error.js";
 
 /**
  * Generates a rolling conversation summary and syncs recent learnings to Mem0.

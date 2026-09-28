@@ -12,7 +12,7 @@ import {
     createSourceChunks,
     deleteChunksBySourceId,
     findChunksBySourceId,
-} from "../repository/source-chunk.repository.js";
+} from "../repository/sourceChunk.repository.js";
 
 import {
     findSourceById,

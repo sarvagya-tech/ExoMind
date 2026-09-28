@@ -1,6 +1,5 @@
 import express from "express";
 import "dotenv/config"
-import prisma from "./lib/db.js";
 import { auth } from "./lib/auth.js";
 import { toNodeHandler } from "better-auth/node";
 import { inngest } from "./inngest/client.js";
@@ -20,9 +19,8 @@ app.use(express.json());
 app.use("/api/inngest", serve({ client: inngest, functions }));
 
 
-app.get('/',async(req,res)=>{
-    const allUser = await prisma.user.findMany()
-    res.json({status :200,data :allUser,message :"this is all user"})
+app.get("/", (req, res) => {
+    res.json({ status: 200, message: "server is running" });
 });
 
 app.listen(port,()=>{
