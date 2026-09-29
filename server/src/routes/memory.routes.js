@@ -5,8 +5,8 @@ import {
     listMemories,
     updateMemory,
 } from "../controllers/memory.controller.js";
-import { requireAuth } from "../middleware/require-auth.middleware.js";
-import { asyncHandler } from "../utils/async-handler.js";
+import { requireAuth } from "../middleware/authentication.js";
+import { asyncHandler } from "../middleware/async-handler.js";
 
 export const memoryRoutes = Router();
 

@@ -1,59 +1,42 @@
-import { findWorkspaceByIdAndUserId,
+import {
+    findWorkspaceByIdAndUserId,
     findWorkspacesByUserId,
     createWorkspaceRecord,
     updateWorkspaceRecord,
-    deleteWorkspaceRecord
-} from "../repository/workspace.repository";
-import { NotFoundError } from "../utils/app.error";
+    deleteWorkspaceRecord,
+} from "../repository/workspace.repository.js";
+import { NotFoundError } from "../utils/app.error.js";
 
+const listWorkspacesByUser = async (userId) => {
+    return await findWorkspacesByUserId(userId);
+};
 
-
-const listWorkspacesByUser = (userId)=>{
-
-    const workspace = findWorkspacesByUserId(userId);
-
-}
-
-const getWorkspaceByIdForUser = async(userId,workspaceId)=>{
-
-    const workspace = await findWorkspaceByIdAndUserId(userId,workspaceId);
-    if(!workspace){
-      throw new NotFoundError("workspace not found ")
+const getWorkspaceByIdForUser = async ({ workspaceId, userId }) => {
+    const workspace = await findWorkspaceByIdAndUserId(workspaceId, userId);
+    if (!workspace) {
+        throw new NotFoundError("Workspace not found");
     }
-    return workspace
+    return workspace;
+};
 
-}
+const createWorkSpaceByUser = async ({ userId, data }) => {
+    return await createWorkspaceRecord(userId, data);
+};
 
-const createWorkSpaceByUser = async(userId,data)=>{
-    const workspace = await createWorkspaceRecord(userId,data);
+const updateWorkSpaceByUser = async ({ workspaceId, userId, data }) => {
+    await getWorkspaceByIdForUser({ workspaceId, userId });
+    return await updateWorkspaceRecord(workspaceId, data);
+};
 
-    return workspace
+const deleteWorkspaceByUser = async ({ workspaceId, userId }) => {
+    await getWorkspaceByIdForUser({ workspaceId, userId });
+    return await deleteWorkspaceRecord(workspaceId);
+};
 
-}
-
-const updateWorkSpaceByUser = async (workspaceId,userId,data)=>{
-
-    const workspace = await getWorkspaceByIdForUser(userId,workspaceId);
-
-    const updateWorkspace = await updateWorkspaceRecord(workspaceId,data);
-    return updateWorkspace;
-
-
-}
-
-// const deleteWorkSpaceForUser = (workspaceId,userId)=>{
-
-//     const getworkspace = await getWorkspaceByIdForUser(userId,workspaceId);
-    
-// }
-
-export{
+export {
     listWorkspacesByUser,
     getWorkspaceByIdForUser,
     createWorkSpaceByUser,
-    updateWorkSpaceByUser
-
-
-
-
-}
+    updateWorkSpaceByUser,
+    deleteWorkspaceByUser,
+};

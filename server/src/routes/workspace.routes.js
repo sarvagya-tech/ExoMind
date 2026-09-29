@@ -6,8 +6,8 @@ import {
     listWorkspaces,
     updateWorkspace,
 } from "../controllers/workspace.controller.js";
-import { requireAuth } from "../middleware/require-auth.middleware.js";
-import { asyncHandler } from "../utils/async-handler.js";
+import { requireAuth } from "../middleware/authentication.js";
+import { asyncHandler } from "../middleware/async-handler.js";
 
 export const workspaceRoutes = Router();
 

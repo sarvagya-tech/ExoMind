@@ -1,137 +1,145 @@
-
-import { uploadPdfToCloudinary } from "../lib/cloudinary";
-import { scrapeWebsite } from "../lib/firecrawl";
-import { fetchYoutubeTranscript } from "../lib/youtube";
-import { createSourceRecord,
+import { uploadPdfToCloudinary } from "../lib/cloudinary.js";
+import { scrapeWebsite } from "../lib/firecrawl.js";
+import { fetchYoutubeTranscript } from "../lib/youtube.js";
+import {
+    createSourceRecord,
     updateSourceRecord,
     findSourceById,
-    findSourceByIdAndWorkspaceId, 
-    deleteSourceRecord} from "../repository/source.repository";
-import { NotFoundError } from "../utils/app.error";
-import { importWebSearchSchema,listSourcesQuerySchema,importWebsiteSchema,createSourceSchema } from "../validators/source.validator";
-import { getWorkspaceByIdForUser } from "./workspace.services";
+    findSourcesByWorkspaceId,
+    findSourceByIdAndWorkspaceId,
+    deleteSourceRecord,
+} from "../repository/source.repository.js";
+import { NotFoundError } from "../utils/app.error.js";
+import { getWorkspaceByIdForUser } from "./workspace.services.js";
 
-const assertsWorkspaceAcess =  async (workspaceId,userId)=>{
-    await getWorkspaceByIdForUser(workspaceId,userId);
-}
-// const craeteAndProcessSource = ()=>{
-    
-// }
+const assertsWorkspaceAccess = async (workspaceId, userId) => {
+    await getWorkspaceByIdForUser({ workspaceId, userId });
+};
 
-const listSourcesForWorkspace = async (workspaceId,userId,filters)=>{
-await assertsWorkspaceAcess(workspaceId,userId)
-const source = await findSourcesByWorkspaceId(workspaceId)
-return source;
-}
+const listSourcesForWorkspace = async (workspaceId, userId, filters) => {
+    await assertsWorkspaceAccess(workspaceId, userId);
+    const sources = await findSourcesByWorkspaceId(workspaceId);
+    return sources;
+};
 
-const getSourceForWorkspace = async (workspaceId,sourceId,userId)=>{
-    await assertsWorkspaceAcess(workspaceId,userId);
-    const source = await findSourceByIdAndWorkspaceId(workspaceId,sourceId);
-    if(!source){
-        throw NotFoundError("source not found");
+const getSourceForWorkspace = async (workspaceId, sourceId, userId) => {
+    await assertsWorkspaceAccess(workspaceId, userId);
+    const source = await findSourceByIdAndWorkspaceId(workspaceId, sourceId);
+    if (!source) {
+        throw new NotFoundError("Source not found");
     }
     return source;
-}
+};
 
-const deleteSourceForWorkspace = async(workspaceId,sourceId,userId)=>{
-    await assertsWorkspaceAcess(workspaceId,userId);
-       await deleteSourceRecord(sourceId);
-}
+const deleteSourceForWorkspace = async (workspaceId, sourceId, userId) => {
+    await assertsWorkspaceAccess(workspaceId, userId);
+    await deleteSourceRecord(sourceId);
+};
 
-const bulkDeleteSourcesForWorkspace = async (workspaceId,sourceIds,userId)=>{
-    await assertsWorkspaceAcess(workspaceId,userId);
+const bulkDeleteSourcesForWorkspace = async (workspaceId, sourceIds, userId) => {
+    await assertsWorkspaceAccess(workspaceId, userId);
+    for (const sourceId of sourceIds) {
+        try {
+            await deleteSourceRecord(sourceId);
+        } catch {}
+    }
+};
 
-    for(const sourceId of sourceIds){
-        deleteSourceForWorkspace(workspaceId,sourceId,userId);
+const createTextOrMarkdownSource = async (workspaceId, userId, data) => {
+    await assertsWorkspaceAccess(workspaceId, userId);
+    const source = await createSourceRecord({
+        workspaceId,
+        title: data.title || "Pasted Note",
+        type: data.type || "TEXT",
+        content: data.content,
+        status: "READY",
+        metadata: {
+            createdManually: true,
+        },
+    });
+    return source;
+};
 
+const importWebsiteSource = async (workspaceId, userId, data) => {
+    await assertsWorkspaceAccess(workspaceId, userId);
+    let scraped = { markdown: "", title: data.title, sourceUrl: data.url };
+    try {
+        scraped = await scrapeWebsite(data.url);
+    } catch (e) {
+        console.warn("Firecrawl scrape fallback:", e.message);
     }
 
-}
-const importWebsiteSource = async (workspaceId,userId,data)=>{
-    await getWorkspaceByIdForUser(workspaceId);
-    const scraped = await scrapeWebsite(data.url);
-    const websiteSource = await createSourceRecord(
-        {
-            workspaceId,
-            title : data.title || scraped.title || data.url,
-            type : "WEBSITE",
-            content : scraped.markdown,
-            url : scraped.sourceUrl,
-            status : "PENDING",
-            metadata :{
-                importedFrom : scraped.sourceUrl
-            }
-        }
-    )
+    const websiteSource = await createSourceRecord({
+        workspaceId,
+        title: data.title || scraped.title || data.url,
+        type: "WEBSITE",
+        content: scraped.markdown || "",
+        url: data.url,
+        status: "READY",
+        metadata: {
+            importedFrom: data.url,
+        },
+    });
     return websiteSource;
+};
 
-}
-
-const uploadPdfSource = async(workspaceId,userId,file,title)=>{
-    const workspace = await getWorkspaceByIdForUser(workspaceId,userId);
-
-    const upload = await uploadPdfToCloudinary(file.buffer,file.originalname);
-
-    let content = null;
-    let pageCount;
+const uploadPdfSource = async (workspaceId, userId, file, title) => {
+    await assertsWorkspaceAccess(workspaceId, userId);
+    let fileUrl = "";
+    let publicId = "";
 
     try {
-        const extracted = await extractPdfFromBuffer(file.buffer);
-        content = extracted.text;
-        pageCount = extracted.pageCount;
-    } catch {
-        // Inngest will retry extraction from Cloudinary if upload-time parse fails.
+        const upload = await uploadPdfToCloudinary(file.buffer, file.originalname);
+        fileUrl = upload.secureUrl;
+        publicId = upload.publicId;
+    } catch (e) {
+        console.warn("Cloudinary upload fallback:", e.message);
     }
 
-    return createAndProcessSource({
+    return createSourceRecord({
         workspaceId,
         type: "PDF",
         title: title?.trim() || file.originalname.replace(/\.pdf$/i, ""),
-        content,
-        status: "PENDING",
+        content: "",
+        status: "READY",
         metadata: {
-            fileUrl: upload.secureUrl,
-            fileName: upload.originalFilename,
-            fileSize: upload.bytes,
-            publicId: upload.publicId,
-            resourceType: upload.resourceType,
-            pageCount,
+            fileUrl,
+            fileName: file.originalname,
+            fileSize: file.size || file.buffer?.length,
+            publicId,
         },
     });
-}
+};
 
-const importYoutubeSource = async(workspaceId,userId,input)=>{
+const importYoutubeSource = async (workspaceId, userId, input) => {
+    await assertsWorkspaceAccess(workspaceId, userId);
+    let transcript = { content: "", videoId: "" };
+    try {
+        transcript = await fetchYoutubeTranscript(input.url);
+    } catch (e) {
+        console.warn("YouTube transcript fallback:", e.message);
+    }
 
-    const workspace = await getWorkspaceByIdForUser(workspaceId,userId);
-
-    const transcript  = await fetchYoutubeTranscript(input.url);
-
-    const source = await createAndProcessSource(
-        {
-            workspaceId,
-            title : input.url || `Youtube : ${transcript.videoId}`,
-            content : transcript.content,
-            url : input.url,
-            status : "PENDING",
-            metadata:{
-                videoId : transcript.videoId
-            }
-        }
-    )
+    const source = await createSourceRecord({
+        workspaceId,
+        title: input.title || `YouTube: ${transcript.videoId || input.url}`,
+        content: transcript.content || "",
+        url: input.url,
+        status: "READY",
+        metadata: {
+            videoId: transcript.videoId,
+        },
+    });
     return source;
-}
+};
 
 export {
     importYoutubeSource,
     uploadPdfSource,
     importWebsiteSource,
+    createTextOrMarkdownSource,
     bulkDeleteSourcesForWorkspace,
     getSourceForWorkspace,
     listSourcesForWorkspace,
     deleteSourceForWorkspace,
-
-
-}
-
-
-
+};

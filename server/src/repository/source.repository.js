@@ -1,7 +1,5 @@
 import prisma from "../lib/db.js";
 
-
-
 export const sourceSelect = {
     id: true,
     workspaceId: true,
@@ -15,72 +13,71 @@ export const sourceSelect = {
     updatedAt: true,
 };
 
-const createSourceRecord = (data)=>{
-    const sourcerecord = prisma.source.create({
-        data:{
-            workspaceId : data.workspaceId,
-            type :data.type,
-            title :data.title,
-            content : data.content ?? null,
-            url : data.url ?? null,
-            status : data.status ?? "PENDING",
-            metadata : data.metadata
+const createSourceRecord = (data) => {
+    return prisma.source.create({
+        data: {
+            workspaceId: data.workspaceId,
+            type: data.type,
+            title: data.title,
+            content: data.content ?? null,
+            url: data.url ?? null,
+            status: data.status ?? "PENDING",
+            metadata: data.metadata ?? {},
         },
-        select:sourceSelect,
-
+        select: sourceSelect,
     });
-    return sourcerecord
+};
 
-}
+const findSourcesByWorkspaceId = (workspaceId) => {
+    return prisma.source.findMany({
+        where: { workspaceId },
+        select: sourceSelect,
+        orderBy: { createdAt: "desc" },
+    });
+};
 
-const findSourceByIdAndWorkspaceId = (sourceId,workspaceId)=>{
-
-    const source = prisma.source.findFirst({
-        where:{
-            id:sourceId,workspaceId,
+const findSourceByIdAndWorkspaceId = (workspaceId, sourceId) => {
+    return prisma.source.findFirst({
+        where: {
+            id: sourceId,
+            workspaceId,
         },
-        select: sourceSelect
+        select: sourceSelect,
     });
-    return source;
+};
 
-}
-const deleteSourceRecord = (sourceId)=>{
-    const source = prisma.source.delete({
-        where:{
-            id : sourceId
-        }
-    })
-    return source
-}
-
-const findSourceById = (sourceId)=>{
-    const source = prisma.source.findUnique({
-        where:{
-            id : sourceId
-        }
+const deleteSourceRecord = (sourceId) => {
+    return prisma.source.delete({
+        where: {
+            id: sourceId,
+        },
     });
-    return source;
+};
 
-}
+const findSourceById = (sourceId) => {
+    return prisma.source.findUnique({
+        where: {
+            id: sourceId,
+        },
+        select: sourceSelect,
+    });
+};
 
-const updateSourceRecord = (sourceId,data)=>{
-
-    const updatedSource = prisma.source.update({
-        where:{
-            id:{sourceId}
+const updateSourceRecord = (sourceId, data) => {
+    return prisma.source.update({
+        where: {
+            id: sourceId,
         },
         data,
-        select : sourceSelect
-    })
-return updatedSource;
-}
+        select: sourceSelect,
+    });
+};
 
-export{
+export {
     createSourceRecord,
+    findSourcesByWorkspaceId,
     updateSourceRecord,
     findSourceById,
     deleteSourceRecord,
-    findSourceByIdAndWorkspaceId
-
-
-}
+    findSourceByIdAndWorkspaceId,
+};

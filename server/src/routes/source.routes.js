@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { asyncHandler } from "../utils/async-handler.js";
+import { asyncHandler } from "../middleware/async-handler.js";
 import {
     bulkDeleteSources,
     createSource,

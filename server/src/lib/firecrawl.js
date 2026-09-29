@@ -1,5 +1,5 @@
 import { Firecrawl } from 'firecrawl';
-import { ValidationError } from '../utils/app.error';
+import { ValidationError } from '../utils/app.error.js';
 
 const scrapeWebsite = async(url)=>{
 

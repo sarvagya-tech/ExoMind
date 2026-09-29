@@ -1,0 +1,91 @@
+export const AI_MODELS = [
+  {
+    id: "gpt-4o-mini",
+    name: "GPT-4o Mini",
+    description: "Fast, intelligent and cost-effective",
+    badge: "Default",
+  },
+  {
+    id: "gpt-4o",
+    name: "GPT-4o",
+    description: "Most capable model for deep reasoning & multimodal tasks",
+    badge: "Pro",
+  },
+  {
+    id: "claude-3-5-sonnet",
+    name: "Claude 3.5 Sonnet",
+    description: "Excellent coding and analytical capabilities",
+    badge: "Anthropic",
+  },
+  {
+    id: "gemini-1.5-pro",
+    name: "Gemini 1.5 Pro",
+    description: "Massive context window for extensive document analysis",
+    badge: "Google",
+  },
+];
+
+export const WORKSPACE_ICONS = [
+  "📓", "📚", "🔬", "💻", "🧠", "💼", "🎓", "🚀", "⚡", "💡",
+  "📊", "📁", "🌍", "🎨", "🏥", "⚖️", "🎵", "🛠️", "📈", "✨"
+];
+
+export const ARTIFACT_DEFINITIONS = [
+  {
+    type: "SUMMARY",
+    title: "Executive Summary",
+    description: "Comprehensive synthesized overview of all selected sources.",
+    icon: "FileText",
+    color: "text-blue-500",
+    bgColor: "bg-blue-500/10",
+  },
+  {
+    type: "TAKEAWAYS",
+    title: "Key Takeaways",
+    description: "Actionable highlights, core learnings, and main conclusions.",
+    icon: "ListChecks",
+    color: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+  },
+  {
+    type: "FLASHCARDS",
+    title: "Study Flashcards",
+    description: "Interactive 3D flip cards to test recall and master core concepts.",
+    icon: "Layers",
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10",
+  },
+  {
+    type: "QUIZ",
+    title: "Interactive Quiz",
+    description: "Multiple-choice challenge with instant score calculation and explanations.",
+    icon: "HelpCircle",
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+  },
+  {
+    type: "MINDMAP",
+    title: "Mind Map",
+    description: "Visual structured concept tree showing topics and relationships.",
+    icon: "Network",
+    color: "text-rose-500",
+    bgColor: "bg-rose-500/10",
+  },
+  {
+    type: "REPORT",
+    title: "Research Report",
+    description: "In-depth structured study report with markdown formatting and citations.",
+    icon: "BookOpen",
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-500/10",
+  },
+];
+
+export const PROMPT_STARTERS = [
+  "Summarize the key arguments across my sources",
+  "What are the major pros and cons mentioned?",
+  "Create a comprehensive study guide",
+  "Compare and contrast the main perspectives",
+  "Explain the most complex concepts simply",
+  "Draft an executive briefing for stakeholders",
+];
