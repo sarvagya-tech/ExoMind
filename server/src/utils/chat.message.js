@@ -1,17 +1,20 @@
-import { UIMessage } from "ai";
-
-
 export function getTextFromUIMessage(message) {
-    return message.parts
-        .filter((part) => part.type === "text")
-        .map((part) => part.text)
-        .join("");
+    if (!message) return "";
+    if (typeof message.content === "string") return message.content;
+    if (Array.isArray(message.parts)) {
+        return message.parts
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join("");
+    }
+    return "";
 }
 
 export function getLastUserMessageText(messages) {
+    if (!Array.isArray(messages)) return null;
     for (let index = messages.length - 1; index >= 0; index -= 1) {
         const message = messages[index];
-        if (message.role === "user") {
+        if (message.role === "user" || message.role === "USER") {
             const text = getTextFromUIMessage(message).trim();
             if (text) {
                 return text;
@@ -23,6 +26,7 @@ export function getLastUserMessageText(messages) {
 }
 
 export function buildConversationTitle(text) {
+    if (!text) return "New chat";
     const normalized = text.replace(/\s+/g, " ").trim();
     if (!normalized) {
         return "New chat";

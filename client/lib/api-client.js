@@ -1,6 +1,7 @@
 // NotebookLM API Client
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // Local storage fallback helper for seamless offline / demo mode
 const STORAGE_KEY_WORKSPACES = "notebookllm_workspaces";

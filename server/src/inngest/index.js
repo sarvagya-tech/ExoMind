@@ -1,7 +1,7 @@
 import { findChunksBySourceId } from "../repository/sourceChunk.repository.js";
 import { findSourceById } from "../repository/source.repository.js";
 
-// import { processArtifactById } from "../services/artifact.services.js";
+import { processArtifactById } from "../services/artifact.service.js";
 import { summarizeConversationById } from "../services/conversation-memory.services.js";
 
 import {

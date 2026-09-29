@@ -25,9 +25,9 @@ export const sourceIdParamSchema = z.object({
 });
 
 export const listsourceQuery = z.object({
-    q:z.string().trim().min(1),
+    q: z.string().trim().min(1).optional(),
     type: sourceTypeSchema.optional(),
-    status: sourceStatusSchema.optional()
+    status: sourceStatusSchema.optional(),
 });
 
 export const createTextSourceSchema = z.object({

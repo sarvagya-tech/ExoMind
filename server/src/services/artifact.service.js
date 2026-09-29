@@ -11,7 +11,7 @@ import { NotFoundError } from "../types/app-error.js";
 import {
     gatherSourceContext,
     generateArtifactContent,
-} from "./artifact-generation.services.js";
+} from "./artifact-genration.service.js";
 import { getWorkspaceByIdForUser } from "./workspace.services.js";
 
 /**

@@ -58,13 +58,18 @@ export async function listUserMemories(userId) {
         return [];
     }
 
-    const page = await getMem0Client().getAll({
-        filters: { user_id: userId },
-        page: 1,
-        pageSize: 100,
-    });
+    try {
+        const page = await getMem0Client().getAll({
+            filters: { user_id: String(userId) },
+            page: 1,
+            pageSize: 100,
+        });
 
-    return page.results.map(mapMemory);
+        return (page.results || []).map(mapMemory);
+    } catch (err) {
+        console.warn("[Mem0] listUserMemories error:", err.message);
+        return [];
+    }
 }
 
 /**
@@ -75,17 +80,22 @@ export async function listUserMemories(userId) {
  * @returns {Promise<Array>} Top matching memories (up to 8), or `[]` when Mem0 is off or query is empty
  */
 export async function searchUserMemories(userId, query) {
-    if (!process.env.MEM0_API_KEY?.trim() || !query.trim()) {
+    if (!process.env.MEM0_API_KEY?.trim() || !query?.trim()) {
         return [];
     }
 
-    const results = await getMem0Client().search(query, {
-        filters: { user_id: userId },
-        topK: 8,
-        threshold: 0.1,
-    });
+    try {
+        const results = await getMem0Client().search(query, {
+            filters: { user_id: String(userId) },
+            topK: 8,
+            threshold: 0.1,
+        });
 
-    return results.results.map(mapMemory);
+        return (results.results || []).map(mapMemory);
+    } catch (err) {
+        console.warn("[Mem0] searchUserMemories error:", err.message);
+        return [];
+    }
 }
 
 /**
@@ -103,13 +113,13 @@ export async function addUserMemory(
     const created = await getMem0Client().add(
         [{ role: "user", content: input.memory }],
         {
-            userId,
+            userId: String(userId),
             infer: input.infer ?? false,
             metadata: input.metadata,
         },
     );
 
-    const first = created[0];
+    const first = created[0] || (created.results && created.results[0]);
     if (!first) {
         throw new Error("Mem0 did not return a created memory");
     }
@@ -134,11 +144,15 @@ export async function addMemoriesFromMessages(
         return;
     }
 
-    await getMem0Client().add(messages, {
-        userId,
-        infer: true,
-        metadata,
-    });
+    try {
+        await getMem0Client().add(messages, {
+            userId: String(userId),
+            infer: true,
+            metadata,
+        });
+    } catch (err) {
+        console.warn("[Mem0] addMemoriesFromMessages error:", err.message);
+    }
 }
 
 /**
