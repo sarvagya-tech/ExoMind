@@ -16,11 +16,58 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
 export function QuizViewer({ artifact }) {
-  const quizQuestions = artifact?.content?.quiz || [];
+  const isGenerating =
+    artifact?.status === "PENDING" || artifact?.status === "PROCESSING";
+
+  const rawQuiz =
+    artifact?.content?.quiz ||
+    artifact?.content?.questions ||
+    (Array.isArray(artifact?.content) ? artifact?.content : []);
+
+  const quizQuestions = React.useMemo(() => {
+    return rawQuiz.map((q) => {
+      let correctIdx = typeof q.correctIndex === "number" ? q.correctIndex : 0;
+      if (typeof q.answer === "string") {
+        const charCode = q.answer.trim().toUpperCase().charCodeAt(0) - 65;
+        if (charCode >= 0 && charCode < (q.options?.length || 4)) {
+          correctIdx = charCode;
+        }
+      }
+      return {
+        question: q.question || q.prompt || "Question",
+        options: Array.isArray(q.options) ? q.options : ["Option A", "Option B", "Option C", "Option D"],
+        correctIndex: correctIdx,
+        explanation: q.explanation || q.rationale || "Based on the uploaded source material.",
+      };
+    });
+  }, [rawQuiz]);
 
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [selectedAnswers, setSelectedAnswers] = React.useState({});
   const [isCompleted, setIsCompleted] = React.useState(false);
+
+  // Reset if artifact changes
+  React.useEffect(() => {
+    setCurrentIndex(0);
+    setSelectedAnswers({});
+    setIsCompleted(false);
+  }, [artifact?.id]);
+
+  if (isGenerating && quizQuestions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center space-y-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 animate-pulse">
+          <HelpCircle className="h-6 w-6" />
+        </div>
+        <p className="text-sm font-semibold text-foreground">
+          Generating multiple-choice quiz questions...
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Creating knowledge checks, answer keys, and pedagogical explanations.
+        </p>
+      </div>
+    );
+  }
 
   if (quizQuestions.length === 0) {
     return (
@@ -30,7 +77,7 @@ export function QuizViewer({ artifact }) {
     );
   }
 
-  const currentQ = quizQuestions[currentIndex];
+  const currentQ = quizQuestions[currentIndex] || quizQuestions[0];
   const selectedOption = selectedAnswers[currentIndex];
   const isAnswered = selectedOption !== undefined;
 
@@ -45,7 +92,7 @@ export function QuizViewer({ artifact }) {
       setTimeout(() => {
         setIsCompleted(true);
         triggerConfetti();
-      }, 800);
+      }, 700);
     }
   };
 
@@ -91,16 +138,16 @@ export function QuizViewer({ artifact }) {
         <div className="w-full rounded-2xl border border-border bg-card p-4 space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span>Accuracy Score</span>
-            <span className={scorePercentage >= 70 ? "text-emerald-500" : "text-amber-500"}>
+            <span className={scorePercentage >= 70 ? "text-emerald-500 font-bold" : "text-amber-500 font-bold"}>
               {scorePercentage}%
             </span>
           </div>
-          <Progress value={scorePercentage} max={100} className="h-2" />
+          <Progress value={scorePercentage} max={100} className="h-2 w-full" />
         </div>
 
         <Button
           onClick={handleReset}
-          className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+          className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium cursor-pointer"
         >
           <RotateCcw className="h-4 w-4" /> Retake Quiz
         </Button>
@@ -120,7 +167,11 @@ export function QuizViewer({ artifact }) {
         </Badge>
       </div>
 
-      <Progress value={currentIndex + 1} max={quizQuestions.length} className="h-1.5" />
+      <Progress
+        value={((currentIndex + 1) / quizQuestions.length) * 100}
+        max={100}
+        className="h-1.5 w-full"
+      />
 
       {/* Question Card */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
@@ -135,14 +186,14 @@ export function QuizViewer({ artifact }) {
             const isCorrect = currentQ.correctIndex === optIdx;
 
             let optionStyle =
-              "border-border bg-background hover:bg-muted/50 hover:border-border/90";
+              "border-border bg-background hover:bg-muted/50 hover:border-border/90 cursor-pointer";
             if (isAnswered) {
               if (isCorrect) {
                 optionStyle = "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold";
               } else if (isSelected) {
                 optionStyle = "border-destructive/50 bg-destructive/10 text-destructive font-semibold";
               } else {
-                optionStyle = "opacity-50 border-border bg-background";
+                optionStyle = "opacity-50 border-border bg-background cursor-not-allowed";
               }
             }
 
@@ -194,7 +245,7 @@ export function QuizViewer({ artifact }) {
           size="sm"
           disabled={currentIndex === 0}
           onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
-          className="text-xs h-8"
+          className="text-xs h-8 cursor-pointer"
         >
           Previous
         </Button>
@@ -203,7 +254,7 @@ export function QuizViewer({ artifact }) {
           <Button
             size="sm"
             onClick={() => setCurrentIndex((prev) => prev + 1)}
-            className="text-xs h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+            className="text-xs h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
           >
             Next Question <ArrowRight className="h-3.5 w-3.5" />
           </Button>

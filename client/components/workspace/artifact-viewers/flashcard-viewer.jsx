@@ -10,18 +10,58 @@ import {
   HelpCircle,
   Sparkles,
   Lightbulb,
+  Layers,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
 export function FlashcardViewer({ artifact }) {
-  const flashcards = artifact?.content?.flashcards || [];
+  const isGenerating =
+    artifact?.status === "PENDING" || artifact?.status === "PROCESSING";
+
+  const rawCards =
+    artifact?.content?.flashcards ||
+    artifact?.content?.cards ||
+    (Array.isArray(artifact?.content) ? artifact?.content : []);
+
+  const flashcards = React.useMemo(() => {
+    return rawCards.map((c) => ({
+      front: c.front || c.question || c.term || c.concept || "Concept",
+      back: c.back || c.answer || c.definition || c.explanation || "No explanation provided.",
+      hint: c.hint || c.clue,
+      category: c.category || c.topic || "Core Knowledge",
+    }));
+  }, [rawCards]);
 
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isFlipped, setIsFlipped] = React.useState(false);
   const [masteredIndices, setMasteredIndices] = React.useState(new Set());
   const [showHint, setShowHint] = React.useState(false);
+
+  // Reset index if flashcards length changes
+  React.useEffect(() => {
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setShowHint(false);
+  }, [artifact?.id]);
+
+  if (isGenerating && flashcards.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center space-y-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 animate-pulse">
+          <Layers className="h-6 w-6" />
+        </div>
+        <p className="text-sm font-semibold text-foreground">
+          Synthesizing study flashcards...
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Extracting key definitions and principles from your sources.
+        </p>
+      </div>
+    );
+  }
 
   if (flashcards.length === 0) {
     return (
@@ -75,7 +115,11 @@ export function FlashcardViewer({ artifact }) {
         </div>
       </div>
 
-      <Progress value={currentIndex + 1} max={flashcards.length} className="h-1.5" />
+      <Progress
+        value={((currentIndex + 1) / flashcards.length) * 100}
+        max={100}
+        className="h-1.5 w-full"
+      />
 
       {/* 3D Flip Card Container */}
       <div
@@ -91,7 +135,7 @@ export function FlashcardViewer({ artifact }) {
           <div className="flex flex-col justify-between h-full backface-hidden">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="h-3 w-3" /> Question / Concept
+                <Sparkles className="h-3 w-3" /> {currentCard.category}
               </span>
               {isMastered && (
                 <CheckCircle className="h-4 w-4 text-emerald-500" />
@@ -117,7 +161,7 @@ export function FlashcardViewer({ artifact }) {
                     e.stopPropagation();
                     setShowHint(!showHint);
                   }}
-                  className="hover:text-amber-500 transition-colors flex items-center gap-1"
+                  className="hover:text-amber-500 transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <Lightbulb className="h-3 w-3" />
                   <span>{showHint ? "Hide Hint" : "Show Hint"}</span>

@@ -43,7 +43,7 @@ export const processSource = inngest.createFunction(
             );
 
             // Step 3: Create chunks
-            const chunks = await step.run(
+            await step.run(
                 "chunk-content",
                 () =>
                     chunkSourceContent(
@@ -66,13 +66,18 @@ export const processSource = inngest.createFunction(
                         );
                     }
 
+                    const chunks =
+                        await findChunksBySourceId(
+                            sourceId
+                        );
+
                     await embedAndIndexSource(
                         source,
-                        chunks || []
+                        chunks
                     );
 
                     return {
-                        chunkCount: chunks?.length || 0,
+                        chunkCount: chunks.length,
                     };
                 }
             );

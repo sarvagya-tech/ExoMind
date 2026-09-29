@@ -1,4 +1,8 @@
 
+import prisma from "../lib/db.js";
+
+
+// Fields we want to get from the database
 export const sourceChunkSelect = {
     id: true,
     sourceId: true,
@@ -9,18 +13,75 @@ export const sourceChunkSelect = {
     createdAt: true,
 };
 
+
+// ------------------------------------
+// Delete all chunks of a source
+// ------------------------------------
+
 export function deleteChunksBySourceId(sourceId) {
-    return Promise.resolve({ count: 0 });
+
+    return prisma.sourceChunk.deleteMany({
+        where: {
+            sourceId
+        }
+    });
 }
+
+
+// ------------------------------------
+// Create multiple chunks
+// ------------------------------------
 
 export function createSourceChunks(chunks) {
-    if (!chunks || chunks.length === 0) {
+
+    // Nothing to create
+    if (chunks.length === 0) {
         return Promise.resolve([]);
     }
-    return Promise.resolve(chunks);
+
+
+    // Create all chunks in one transaction
+    return prisma.$transaction(
+
+        chunks.map((chunk) => {
+
+            return prisma.sourceChunk.create({
+
+                data: {
+                    sourceId: chunk.sourceId,
+                    index: chunk.index,
+                    content: chunk.content,
+                    tokenCount: chunk.tokenCount ?? null,
+                    metadata: chunk.metadata,
+                },
+
+                select: sourceChunkSelect,
+
+            });
+
+        })
+
+    );
 }
+
+
+// ------------------------------------
+// Find all chunks of a source
+// ------------------------------------
 
 export function findChunksBySourceId(sourceId) {
-    return Promise.resolve([]);
-}
 
+    return prisma.sourceChunk.findMany({
+
+        where: {
+            sourceId
+        },
+
+        select: sourceChunkSelect,
+
+        orderBy: {
+            index: "asc"
+        },
+
+    });
+}

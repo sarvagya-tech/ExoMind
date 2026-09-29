@@ -86,31 +86,43 @@ export async function createArtifactForWorkspace(
         type: input.type,
         title:
             input.title ||
-            `${
-                {
-                    SUMMARY: "Summary",
-                    TAKEAWAYS: "Key Takeaways",
-                    FLASHCARDS: "Flashcards",
-                    QUIZ: "Quiz",
-                    MINDMAP: "Mind Map",
-                    REPORT: "AI Report",
-                }[input.type]
+            `${{
+                SUMMARY: "Summary",
+                TAKEAWAYS: "Key Takeaways",
+                FLASHCARDS: "Flashcards",
+                QUIZ: "Quiz",
+                MINDMAP: "Mind Map",
+                REPORT: "AI Report",
+            }[input.type]
             } · ${new Date().toLocaleDateString()}`,
         sourceIds: context.sourceIds,
-        status: "PENDING",
+        status: "PROCESSING",
     });
 
-    await enqueueArtifactGeneration({
-        artifactId: artifact.id,
-        workspaceId,
-    });
+    try {
+        const content = await generateArtifactContent(
+            artifact.type,
+            context.text,
+        );
 
-    // Fallback: Also trigger async generation directly so artifacts generate even if Inngest CLI is offline
-    void processArtifactById(artifact.id).catch((err) => {
-        console.warn("[Artifact Generation] Direct fallback warning:", err.message);
-    });
+        const readyArtifact = await updateArtifactRecord(artifact.id, {
+            status: "READY",
+            content,
+            metadata: {
+                generatedAt: new Date().toISOString(),
+                processingError: undefined,
+            },
+        });
 
-    return artifact;
+        return readyArtifact;
+    } catch (err) {
+        console.warn("[Artifact Creation] Sync generation deferring to Inngest:", err.message);
+        await enqueueArtifactGeneration({
+            artifactId: artifact.id,
+            workspaceId,
+        });
+        return artifact;
+    }
 }
 
 /**
