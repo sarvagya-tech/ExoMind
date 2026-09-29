@@ -1,7 +1,7 @@
 import { generateText, Output } from "ai";
-import { getLanguageModel } from "../lib/ai-provider.js";
 import { z } from "zod";
 import { CHAT_MODEL } from "../lib/ai-config.js";
+import { getChatLanguageModel } from "../lib/openAi.js";
 import { findSourcesByWorkspaceId } from "../repository/source.repository.js";
 import { ValidationError } from "../types/app-error.js";
 
@@ -58,57 +58,84 @@ const takeawaysSchema = z.object({
 
 const reportSchema = z.object({
     markdown: z.string(),
+    sections: z.array(
+        z.object({
+            title: z.string(),
+            content: z.string(),
+        }),
+    ),
 });
 
-export async function gatherSourceContext(workspaceId, sourceIds) {
-    const sources = await findSourcesByWorkspaceId(workspaceId);
-    const readySources = sources.filter(
-        (source) => source.status === "READY" && source.content,
-    );
+/**
+ * Collects and concatenates text from READY workspace sources for artifact generation.
+ *
+ * @param {string} workspaceId - Workspace whose sources to read
+ * @param {string[]} [sourceIds] - Optional subset of source ids; defaults to all READY sources
+ * @returns {Promise<{text: string, sourceIds: string[]}>} Combined source text (max 120k chars) and the ids actually used
+ * @throws {ValidationError} When no ready sources exist or none have extracted content
+ */
+export async function gatherSourceContext(
+    workspaceId,
+    sourceIds,
+) {
+    const sources = await findSourcesByWorkspaceId(workspaceId, {
+        status: "READY",
+    });
 
-    if (readySources.length === 0) {
+    const selected = sourceIds?.length
+        ? sources.filter((source) => sourceIds.includes(source.id))
+        : sources;
+
+    if (selected.length === 0) {
         throw new ValidationError(
-            "No ready sources available to generate artifacts. Please upload and process at least one source.",
+            "No ready sources found. Add and process sources before generating learning tools.",
         );
     }
 
-    const filtered =
-        sourceIds && sourceIds.length > 0
-            ? readySources.filter((source) => sourceIds.includes(source.id))
-            : readySources;
+    const withContent = selected.flatMap((source) => {
+        const content = source.content?.trim();
+        return content ? [{ title: source.title, content }] : [];
+    });
 
-    if (filtered.length === 0) {
+    if (withContent.length === 0) {
         throw new ValidationError(
-            "None of the selected sources are ready for generation.",
+            "Selected sources have no extracted content yet.",
         );
     }
 
-    const combinedText = filtered
-        .map(
-            (source) =>
-                `--- SOURCE: ${source.title} (${source.type}) ---\n${source.content}`,
-        )
-        .join("\n\n");
+    const text = withContent
+        .map((source) => `# ${source.title}\n\n${source.content}`)
+        .join("\n\n---\n\n")
+        .slice(0, MAX_CONTEXT_CHARS);
 
     return {
-        sourceText: combinedText.slice(0, MAX_CONTEXT_CHARS),
-        sourceIds: filtered.map((source) => source.id),
+        text,
+        sourceIds: selected.map((source) => source.id),
     };
 }
 
-export async function generateArtifactContent(type, sourceText) {
+/**
+ * Generates structured or markdown content for a learning artifact using the AI SDK.
+ *
+ * @param {string} type - Artifact type (`SUMMARY`, `QUIZ`, `FLASHCARDS`, etc.)
+ * @param {string} sourceText - Combined source material from {@link gatherSourceContext}
+ * @returns {Promise<any>} Type-specific JSON content stored on the artifact row
+ * @throws {ValidationError} When the artifact type is unsupported
+ */
+export async function generateArtifactContent(
+    type,
+    sourceText,
+) {
     const system = [
-        `You are NotebookLM Studio, an expert learning assistant generating a ${type.toLowerCase()} from workspace source materials.`,
+        `You are Chaibook, an expert learning assistant generating a ${type.toLowerCase()} from workspace source materials.`,
         "Use ONLY the provided source content. Do not invent facts not supported by the sources.",
         "Be clear, educational, and well-structured.",
     ].join("\n");
 
-    const model = getLanguageModel(CHAT_MODEL);
-
     switch (type) {
         case "SUMMARY": {
             const result = await generateText({
-                model,
+                model: getChatLanguageModel(CHAT_MODEL),
                 system,
                 prompt: `Write a comprehensive markdown summary of the following sources:\n\n${sourceText}`,
             });
@@ -116,7 +143,7 @@ export async function generateArtifactContent(type, sourceText) {
         }
         case "TAKEAWAYS": {
             const result = await generateText({
-                model,
+                model: getChatLanguageModel(CHAT_MODEL),
                 system,
                 output: Output.object({ schema: takeawaysSchema }),
                 prompt: `Extract the most important key takeaways as concise bullet points from:\n\n${sourceText}`,
@@ -125,7 +152,7 @@ export async function generateArtifactContent(type, sourceText) {
         }
         case "FLASHCARDS": {
             const result = await generateText({
-                model,
+                model: getChatLanguageModel(CHAT_MODEL),
                 system,
                 output: Output.object({ schema: flashcardsSchema }),
                 prompt: `Create study flashcards (front/back) covering the main concepts from:\n\n${sourceText}`,
@@ -134,7 +161,7 @@ export async function generateArtifactContent(type, sourceText) {
         }
         case "QUIZ": {
             const result = await generateText({
-                model,
+                model: getChatLanguageModel(CHAT_MODEL),
                 system,
                 output: Output.object({ schema: quizSchema }),
                 prompt: `Create a multiple-choice quiz with explanations from:\n\n${sourceText}`,
@@ -143,7 +170,7 @@ export async function generateArtifactContent(type, sourceText) {
         }
         case "MINDMAP": {
             const result = await generateText({
-                model,
+                model: getChatLanguageModel(CHAT_MODEL),
                 system,
                 output: Output.object({ schema: mindmapSchema }),
                 prompt: `Create a mind map as nodes and edges. Use a central topic node and branch out logically from:\n\n${sourceText}`,
@@ -152,7 +179,7 @@ export async function generateArtifactContent(type, sourceText) {
         }
         case "REPORT": {
             const result = await generateText({
-                model,
+                model: getChatLanguageModel(CHAT_MODEL),
                 system,
                 output: Output.object({ schema: reportSchema }),
                 prompt: `Write a structured long-form report with sections and a full markdown version from:\n\n${sourceText}`,

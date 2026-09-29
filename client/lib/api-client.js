@@ -394,7 +394,12 @@ export const workspaceApi = {
 export const sourceApi = {
   async list(workspaceId) {
     try {
-      return await request(`/api/workspaces/${workspaceId}/sources`);
+      const data = await request(`/api/workspaces/${workspaceId}/sources`);
+      if (Array.isArray(data)) {
+        const current = getLocal(STORAGE_KEY_SOURCES, []).filter((s) => s.workspaceId !== workspaceId);
+        setLocal(STORAGE_KEY_SOURCES, [...data, ...current]);
+      }
+      return data;
     } catch {
       const sources = getLocal(STORAGE_KEY_SOURCES, []);
       return sources.filter((s) => s.workspaceId === workspaceId);
@@ -418,10 +423,16 @@ export const sourceApi = {
     if (title) formData.append("title", title);
 
     try {
-      return await request(`/api/workspaces/${workspaceId}/sources/upload`, {
+      const res = await request(`/api/workspaces/${workspaceId}/sources/upload`, {
         method: "POST",
         body: formData,
       });
+      if (res && res.id) {
+        const sources = getLocal(STORAGE_KEY_SOURCES, []).filter((s) => s.id !== res.id);
+        sources.unshift(res);
+        setLocal(STORAGE_KEY_SOURCES, sources);
+      }
+      return res;
     } catch {
       const sources = getLocal(STORAGE_KEY_SOURCES, []);
       const newSource = {
@@ -447,10 +458,16 @@ export const sourceApi = {
 
   async importWebsite(workspaceId, { url, title }) {
     try {
-      return await request(`/api/workspaces/${workspaceId}/sources/import/website`, {
+      const res = await request(`/api/workspaces/${workspaceId}/sources/import/website`, {
         method: "POST",
         body: JSON.stringify({ url, title }),
       });
+      if (res && res.id) {
+        const sources = getLocal(STORAGE_KEY_SOURCES, []).filter((s) => s.id !== res.id);
+        sources.unshift(res);
+        setLocal(STORAGE_KEY_SOURCES, sources);
+      }
+      return res;
     } catch {
       const sources = getLocal(STORAGE_KEY_SOURCES, []);
       const newSource = {
@@ -473,10 +490,16 @@ export const sourceApi = {
 
   async importYoutube(workspaceId, { url, title }) {
     try {
-      return await request(`/api/workspaces/${workspaceId}/sources/import/youtube`, {
+      const res = await request(`/api/workspaces/${workspaceId}/sources/import/youtube`, {
         method: "POST",
         body: JSON.stringify({ url, title }),
       });
+      if (res && res.id) {
+        const sources = getLocal(STORAGE_KEY_SOURCES, []).filter((s) => s.id !== res.id);
+        sources.unshift(res);
+        setLocal(STORAGE_KEY_SOURCES, sources);
+      }
+      return res;
     } catch {
       const sources = getLocal(STORAGE_KEY_SOURCES, []);
       let videoId = "video";
@@ -506,10 +529,16 @@ export const sourceApi = {
 
   async createText(workspaceId, { title, content, type = "TEXT" }) {
     try {
-      return await request(`/api/workspaces/${workspaceId}/sources`, {
+      const res = await request(`/api/workspaces/${workspaceId}/sources`, {
         method: "POST",
         body: JSON.stringify({ title, content, type }),
       });
+      if (res && res.id) {
+        const sources = getLocal(STORAGE_KEY_SOURCES, []).filter((s) => s.id !== res.id);
+        sources.unshift(res);
+        setLocal(STORAGE_KEY_SOURCES, sources);
+      }
+      return res;
     } catch {
       const sources = getLocal(STORAGE_KEY_SOURCES, []);
       const newSource = {
@@ -656,7 +685,16 @@ export const chatApi = {
     }
 
     // High quality offline fallback simulator with citations
-    const sources = getLocal(STORAGE_KEY_SOURCES, []).filter((s) => s.workspaceId === workspaceId);
+    let sources = getLocal(STORAGE_KEY_SOURCES, []).filter((s) => s.workspaceId === workspaceId);
+    if (sources.length === 0) {
+      try {
+        const liveSources = await sourceApi.list(workspaceId);
+        if (Array.isArray(liveSources) && liveSources.length > 0) {
+          sources = liveSources;
+        }
+      } catch {}
+    }
+
     const activeSources = selectedSourceIds && selectedSourceIds.length > 0
       ? sources.filter((s) => selectedSourceIds.includes(s.id))
       : sources;
@@ -679,20 +717,26 @@ export const chatApi = {
     allMessages.push(userMsgObj);
 
     // Build intelligent response based on active sources
-    const citations = activeSources.slice(0, 3).map((src, i) => ({
+    const citations = activeSources.slice(0, 4).map((src, i) => ({
       sourceId: src.id,
       sourceTitle: src.title,
       sourceType: src.type,
       page: src.metadata?.pageCount ? Math.min(i + 1, src.metadata.pageCount) : 1,
-      excerpt: src.content ? src.content.slice(0, 180) + "..." : "Reference excerpt from source documentation.",
+      excerpt: src.content ? src.content.slice(0, 240).replace(/\n+/g, " ") + "..." : "Extracted document context.",
     }));
 
     let simulatedResponse = "";
     if (activeSources.length === 0) {
-      simulatedResponse = `I don't see any sources uploaded to this notebook yet. \n\nPlease add some PDF files, websites, YouTube videos, or text notes on the left panel so I can ground my responses with precise citations!`;
+      simulatedResponse = `I don't see any sources uploaded to this notebook yet.\n\nPlease add some PDF files, websites, YouTube videos, or text notes on the left panel so I can ground my responses with precise citations!`;
     } else {
-      const sourceTitles = activeSources.map((s, idx) => `**${s.title}** [${idx + 1}]`).join(", ");
-      simulatedResponse = `Synthesizing information across ${activeSources.length} active source(s): ${sourceTitles}.\n\n### Comprehensive Answer:\n\nRegarding your question: **"${userMessage.content}"**, the source materials highlight several key dimensions:\n\n1. **Core Findings & Principles**: \n   The primary documents demonstrate that architectural modularity and explicit attention scores enable rapid synthesis without losing high-dimensional context.\n\n2. **Evidence from Selected Sources**:\n   - In **${activeSources[0]?.title}** [1], key mechanics show significant reduction in computational overhead while maintaining semantic fidelity.\n   ${activeSources[1] ? `- Cross-referencing with **${activeSources[1]?.title}** [2], these findings validate empirical retrieval accuracy across benchmark suites.\n` : ""}\n3. **Practical Implications**:\n   Applying these insights allows structured recall, automated flashcard generation, and rapid conceptual mastery.`;
+      const sourceList = activeSources.map((s, idx) => `[${idx + 1}] **${s.title}**`).join(", ");
+      
+      const snippets = activeSources.slice(0, 3).map((src, idx) => {
+        const snippet = src.content ? src.content.slice(0, 300).trim() : `Key findings documented in ${src.title}`;
+        return `> *"${snippet}"*\n> — [${idx + 1}] **${src.title}**`;
+      }).join("\n\n");
+
+      simulatedResponse = `Based on your grounded workspace sources (${sourceList}):\n\n### Grounded Answer for: "${userMessage.content}"\n\n${snippets}\n\n### Key Takeaways:\n1. **Core Findings**: The uploaded documentation in **${activeSources[0]?.title}** [1] directly addresses this topic with specific structured details.\n2. **Evidence**: Information synthesized across your active materials validates the core mechanisms and design.\n3. **Application**: You can reference the inline citations [1] or generate flashcards, summaries, and reports in the Studio panel.`;
     }
 
     // Simulate streaming typing effect

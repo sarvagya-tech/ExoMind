@@ -1,4 +1,3 @@
-import { getLanguageModel } from "../lib/ai-provider.js";
 import { z } from "zod";
 import {
     convertToModelMessages,
@@ -15,6 +14,7 @@ import {
     CONVERSATION_SUMMARY_INTERVAL,
     RECENT_MESSAGE_WINDOW,
 } from "../lib/ai-config.js";
+import { getChatLanguageModel } from "../lib/openAi.js";
 import { enqueueConversationSummarize } from "../lib/conversation-events.js";
 import {
     buildChatSystemPrompt,
@@ -243,39 +243,39 @@ export async function streamWorkspaceChat(
 
     const contextMessages =
         conversation.summary &&
-        input.messages.length > RECENT_MESSAGE_WINDOW
+            input.messages.length > RECENT_MESSAGE_WINDOW
             ? input.messages.slice(-RECENT_MESSAGE_WINDOW)
             : input.messages;
 
     let webSearchResults = null;
 
-        const stream = createUIMessageStream({
+    const stream = createUIMessageStream({
         originalMessages: input.messages,
         execute: async ({ writer }) => {
             const tools =
                 webSearchEnabled
                     ? {
-                          web_search: tool({
-                              description:
-                                  "Search the web for up-to-date information outside the workspace sources.",
-                              inputSchema: z.object({
-                                  query: z
-                                      .string()
-                                      .describe(
-                                          "The search query for current web information",
-                                      ),
-                              }),
-                              execute: async ({ query }) => {
-                                  const results = await searchWeb(query);
-                                  webSearchResults = results;
-                                  return formatTavilyResultsForPrompt(results);
-                              },
-                          }),
-                      }
+                        web_search: tool({
+                            description:
+                                "Search the web for up-to-date information outside the workspace sources.",
+                            inputSchema: z.object({
+                                query: z
+                                    .string()
+                                    .describe(
+                                        "The search query for current web information",
+                                    ),
+                            }),
+                            execute: async ({ query }) => {
+                                const results = await searchWeb(query);
+                                webSearchResults = results;
+                                return formatTavilyResultsForPrompt(results);
+                            },
+                        }),
+                    }
                     : undefined;
 
             const result = streamText({
-                model: getLanguageModel(chatModel),
+                model: getChatLanguageModel(chatModel),
                 system: systemPrompt,
                 messages: await convertToModelMessages(contextMessages),
                 tools,
@@ -296,11 +296,11 @@ export async function streamWorkspaceChat(
 
             const webCitations = webSearchResults
                 ? webSearchResults.results.map((result) => ({
-                      sourceType: "WEB",
-                      sourceTitle: result.title,
-                      url: result.url,
-                      excerpt: result.content.slice(0, 280),
-                  }))
+                    sourceType: "WEB",
+                    sourceTitle: result.title,
+                    url: result.url,
+                    excerpt: result.content.slice(0, 280),
+                }))
                 : [];
             const allCitations = [...citations, ...webCitations];
 
