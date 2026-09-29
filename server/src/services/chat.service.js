@@ -1,4 +1,4 @@
-import { openai } from "@ai-sdk/openai";
+import { getLanguageModel } from "../lib/ai-provider.js";
 import { z } from "zod";
 import {
     convertToModelMessages,
@@ -275,7 +275,7 @@ export async function streamWorkspaceChat(
                     : undefined;
 
             const result = streamText({
-                model: openai(chatModel),
+                model: getLanguageModel(chatModel),
                 system: systemPrompt,
                 messages: await convertToModelMessages(contextMessages),
                 tools,

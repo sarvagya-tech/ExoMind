@@ -1,13 +1,26 @@
 /** Default chat model when the client or workspace does not specify one. */
-export const CHAT_MODEL = "gpt-4o-mini";
+export const CHAT_MODEL =
+    process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY
+        ? "gemini-2.0-flash"
+        : "gpt-4o-mini";
 
 /** Allowed chat models exposed to the client and workspace settings. */
-export const CHAT_MODELS = ["gpt-4o-mini", "gpt-4o"];
+export const CHAT_MODELS = [
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+    "gpt-4o-mini",
+    "gpt-4o",
+    "claude-3-5-sonnet",
+];
 
-/** OpenAI embedding model used for RAG vector indexing and query embedding. */
-export const EMBEDDING_MODEL = "text-embedding-3-small";
+/** Embedding model used for RAG vector indexing and query embedding. */
+export const EMBEDDING_MODEL =
+    process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY
+        ? "text-embedding-004"
+        : "text-embedding-3-small";
 
-/** Vector dimension count — must match Pinecone index configuration. */
+/** Vector dimension count — matches Pinecone index configuration. */
 export const EMBEDDING_DIMENSIONS = 1536;
 
 /** Target max characters per text chunk during source processing. */
