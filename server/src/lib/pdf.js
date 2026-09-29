@@ -12,30 +12,61 @@ const downloadPdf = async (url) => {
 };
 
 export const extractPdfFromBuffer = async (buffer) => {
-    const arrayBuffer =
-        buffer instanceof Buffer
-            ? buffer.buffer.slice(
-                  buffer.byteOffset,
-                  buffer.byteOffset + buffer.byteLength,
-              )
-            : buffer;
+    if (!buffer) {
+        throw new Error("No PDF buffer provided");
+    }
 
-    const pdf = getDocumentProxy(new Uint8Array(arrayBuffer));
-    const { totalPages, text } = await extractText(pdf, { mergePages: true });
+    let uint8Array;
+    if (Buffer.isBuffer(buffer)) {
+        uint8Array = new Uint8Array(
+            buffer.buffer.slice(
+                buffer.byteOffset,
+                buffer.byteOffset + buffer.byteLength,
+            ),
+        );
+    } else if (buffer instanceof ArrayBuffer) {
+        uint8Array = new Uint8Array(buffer);
+    } else if (buffer instanceof Uint8Array) {
+        uint8Array = new Uint8Array(
+            buffer.buffer.slice(
+                buffer.byteOffset,
+                buffer.byteOffset + buffer.byteLength,
+            ),
+        );
+    } else {
+        const buf = Buffer.from(buffer);
+        uint8Array = new Uint8Array(
+            buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength),
+        );
+    }
+
+    const { totalPages, text } = await extractText(uint8Array, {
+        mergePages: false,
+    });
+
     const pages = Array.isArray(text)
-        ? text.map((page) => page.trim())
-        : [String(text).trim()];
+        ? text.map((page) => String(page || "").trim())
+        : [String(text || "").trim()];
 
-    const joined = pages.filter(Boolean).join("\n\n");
+    // Format into clean Markdown content with Page headings if multi-page
+    let markdown = "";
+    if (pages.length > 1) {
+        markdown = pages
+            .map((pageContent, idx) => `## Page ${idx + 1}\n\n${pageContent}`)
+            .filter((p) => p.trim())
+            .join("\n\n---\n\n");
+    } else {
+        markdown = pages[0] || "";
+    }
 
-    if (!joined) {
-        throw new Error("No text could be extracted from the PDF");
+    if (!markdown.trim()) {
+        markdown = "*(No readable text could be extracted from this PDF document)*";
     }
 
     return {
-        text: joined,
+        text: markdown,
         pages,
-        pageCount: totalPages,
+        pageCount: totalPages || pages.length || 1,
     };
 };
 
