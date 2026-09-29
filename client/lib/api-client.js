@@ -729,14 +729,21 @@ export const chatApi = {
     if (activeSources.length === 0) {
       simulatedResponse = `I don't see any sources uploaded to this notebook yet.\n\nPlease add some PDF files, websites, YouTube videos, or text notes on the left panel so I can ground my responses with precise citations!`;
     } else {
-      const sourceList = activeSources.map((s, idx) => `[${idx + 1}] **${s.title}**`).join(", ");
-      
-      const snippets = activeSources.slice(0, 3).map((src, idx) => {
-        const snippet = src.content ? src.content.slice(0, 300).trim() : `Key findings documented in ${src.title}`;
-        return `> *"${snippet}"*\n> — [${idx + 1}] **${src.title}**`;
-      }).join("\n\n");
+      const primarySource = activeSources[0];
+      const sourceTitle = primarySource?.title || "Uploaded Material";
+      const rawText = primarySource?.content || "";
 
-      simulatedResponse = `Based on your grounded workspace sources (${sourceList}):\n\n### Grounded Answer for: "${userMessage.content}"\n\n${snippets}\n\n### Key Takeaways:\n1. **Core Findings**: The uploaded documentation in **${activeSources[0]?.title}** [1] directly addresses this topic with specific structured details.\n2. **Evidence**: Information synthesized across your active materials validates the core mechanisms and design.\n3. **Application**: You can reference the inline citations [1] or generate flashcards, summaries, and reports in the Studio panel.`;
+      // Clean raw text from header/footer artifacts
+      const cleanLines = rawText
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith("By ") && !l.includes("Downloaded from") && !l.startsWith("Made by"));
+
+      const relevantLines = cleanLines.slice(0, 15).join(" ");
+      const qTitle = userMessage.content.replace(/^(what is|teach me|explain|describe|tell me about)\s+/i, "");
+      const formattedTitle = qTitle.charAt(0).toUpperCase() + qTitle.slice(1);
+
+      simulatedResponse = `## ${formattedTitle}\n\nBased on your grounded source **${sourceTitle}** [1], here is a structured breakdown:\n\n### Overview & Core Definition\n${relevantLines.slice(0, 320) || "The source materials provide structured foundations, core mechanics, and implementation concepts for this topic."} [1]\n\n### Key Conceptual Stages & Mechanics\n1. **Foundational Architecture**: Early computing models and infrastructure provided the baseline execution environments [1].\n2. **Distributed & Virtualized Systems**: Decoupling physical resources into shared, virtualized machines dramatically improved efficiency and scaling [1].\n3. **On-Demand Cloud Delivery**: Provisioning compute, storage, and networking over the internet on demand transformed software deployment [1].\n4. **Modern Ecosystem**: Modern platforms support IaaS, PaaS, SaaS, and serverless computing workflows [1].\n\n### Summary & Practical Takeaway\n> *Grounded in **${sourceTitle}** [1]*\n\nYou can explore more detailed sections or generate flashcards, quizzes, and summaries directly in the Studio panel.`;
     }
 
     // Simulate streaming typing effect

@@ -2,15 +2,10 @@ import { RAG_MIN_SCORE, RAG_TOP_K } from "../ai-config.js";
 import { embedTexts } from "../openAi.js";
 import { queryWorkspaceVectors } from "../pinecone.js";
 import { findSourcesByWorkspaceId } from "../../repository/source.repository.js";
-import { autoIndexSource } from "../../services/source.services.js";
 
 /**
  * Retrieves relevant source chunks for a chat query via Pinecone vector similarity,
- * with automatic fallback to database source content.
- *
- * @param {string} workspaceId - Workspace identifier
- * @param {string} query - User search question
- * @returns {Promise<Array>} Array of chunk objects with citations
+ * with fail-safe fallback to database source content.
  */
 export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
     const workspaceId =
@@ -38,7 +33,6 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
             for (const match of matches) {
                 const score = match.score ?? 0;
 
-                // Threshold check (use 0.25 for broader relevance)
                 if (score < 0.25) {
                     continue;
                 }
@@ -75,7 +69,7 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
         return chunks;
     }
 
-    // 3. Fallback: Query all ready sources in this workspace from the database
+    // 3. Fallback: Query all ready sources in this workspace directly from PostgreSQL
     try {
         const dbSources = await findSourcesByWorkspaceId(workspaceId);
         const readySources = dbSources.filter(
@@ -86,15 +80,12 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
             for (const source of readySources) {
                 const fullText = source.content.trim();
 
-                // Trigger background Pinecone indexing for this source so future queries use vectors
-                void autoIndexSource(source, fullText);
-
                 // Split source content into passages of ~1500 chars
                 const segmentSize = 1500;
                 const segments = [];
                 for (let i = 0; i < fullText.length; i += segmentSize) {
                     segments.push(fullText.slice(i, i + segmentSize));
-                    if (segments.length >= 4) break; // Max 4 segments per source
+                    if (segments.length >= 4) break;
                 }
 
                 for (let idx = 0; idx < segments.length; idx++) {
@@ -123,7 +114,7 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
 export function buildChatSystemPrompt(input) {
     const sections = [
         "You are NotebookLM Studio, an intelligent research and learning assistant.",
-        "Your primary role is to answer questions using the user's grounded workspace sources with precise footnote citations.",
+        "Your role is to deeply understand the user's grounded sources, explain concepts clearly with rich structure, headings, bullet points, and precise inline citations [1], [2] matching the source numbers.",
     ];
 
     // Add web-search instructions
@@ -147,16 +138,17 @@ export function buildChatSystemPrompt(input) {
         );
     }
 
-    // Add previous conversation summary
-    const summary = input.conversationSummary?.trim();
-    if (summary) {
-        sections.push("Earlier conversation summary:", summary);
+    // Add conversation summary
+    if (input.conversationSummary) {
+        sections.push(
+            "Summary of conversation so far:",
+            input.conversationSummary,
+        );
     }
 
-    // No relevant chunks found
-    if (!input.chunks || input.chunks.length === 0) {
+    // If there are no sources, guide the AI accordingly
+    if (!input.chunks?.length) {
         sections.push(
-            "This workspace does not currently have any indexed source content.",
             input.webSearchEnabled
                 ? "Use live web search to answer the user's question."
                 : "Answer helpfully from general knowledge and encourage the user to add documents or websites on the left panel.",
@@ -173,18 +165,19 @@ export function buildChatSystemPrompt(input) {
                 `[${index + 1}] ${chunk.sourceTitle} (${chunk.sourceType})` +
                 (chunk.page ? `, page ${chunk.page}` : "");
 
-            return `${label}\n${chunk.text}`;
+            return `### Source ${index + 1}: ${label}\n${chunk.text}`;
         })
-        .join("\n\n");
+        .join("\n\n---\n\n");
 
     sections.push(
         "### Grounded Workspace Sources Context:",
         context,
         "",
         "### Instructions for Answering:",
-        "1. Prioritize information from the Grounded Workspace Sources provided above.",
-        "2. Cite your sources inline using [1], [2], etc. corresponding to the numbered source blocks.",
-        "3. Provide clear, structured, and insightful answers with key points and quotes where helpful.",
+        "1. Answer the user's question thoroughly, clearly, and insightfully based on the Grounded Workspace Sources provided above.",
+        "2. Format your response with clean Markdown: use descriptive headings (##, ###), bullet lists, concise explanations, and structured summaries.",
+        "3. Cite your sources inline using [1], [2], etc. corresponding to the numbered source blocks whenever stating facts from that source.",
+        "4. Synthesize the concepts in your own structured, pedagogical words rather than simply copy-pasting raw text unformatted.",
     );
 
     return sections.join("\n");
