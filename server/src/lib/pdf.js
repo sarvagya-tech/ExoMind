@@ -1,39 +1,43 @@
 
-import {extractText,getDocumentProxy} from 'unpdf'
+import { extractText, getDocumentProxy } from "unpdf";
+import { getSignedCloudinaryDownloadUrl } from "./cloudinary.js";
 
-
-const downloadPdf = async (url)=>{
+const downloadPdf = async (url) => {
     const response = await fetch(url);
 
-    if(!response.ok){
-        throw new Error(`failed to download the pdf (${response.status})`)
-        }
+    if (!response.ok) {
+        throw new Error(`failed to download the pdf (${response.status})`);
+    }
     return response.arrayBuffer();
-
-}
-export const extractPdfFromBuffer = async (buffer) => {
-    const arrayBuffer = buffer instanceof Buffer
-        ? buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-        : buffer;
-        
-        const pdf = getDocumentProxy(new Uint8Array(arrayBuffer));
-        const { totalPages, text } = await extractText(pdf, { mergePages: true })
-        const pages = Array.isArray(text)
-    ? text.map((page) => page.trim())
-    : [String(text).trim()];
-
-const joined = pages.filter(Boolean).join("\n\n");
-
-if (!joined) {
-    throw new Error("No text could be extracted from the PDF");
-}
-
-return {
-    text: joined,
-    pages,
-    pageCount: totalPages,
 };
-}
+
+export const extractPdfFromBuffer = async (buffer) => {
+    const arrayBuffer =
+        buffer instanceof Buffer
+            ? buffer.buffer.slice(
+                  buffer.byteOffset,
+                  buffer.byteOffset + buffer.byteLength,
+              )
+            : buffer;
+
+    const pdf = getDocumentProxy(new Uint8Array(arrayBuffer));
+    const { totalPages, text } = await extractText(pdf, { mergePages: true });
+    const pages = Array.isArray(text)
+        ? text.map((page) => page.trim())
+        : [String(text).trim()];
+
+    const joined = pages.filter(Boolean).join("\n\n");
+
+    if (!joined) {
+        throw new Error("No text could be extracted from the PDF");
+    }
+
+    return {
+        text: joined,
+        pages,
+        pageCount: totalPages,
+    };
+};
 
 export async function extractPdfFromCloudinary(input) {
     try {
@@ -65,4 +69,4 @@ export async function extractPdfFromCloudinary(input) {
 
 
 
- 
+
