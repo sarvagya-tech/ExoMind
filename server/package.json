@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node dist/index.js",
-    "dev": "nodemon -r dotenv/config src/index.js"
+    "dev": "nodemon -r dotenv/config src/index.js",
+    "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3001/api/inngest"
   },
   "keywords": [],
   "author": "",

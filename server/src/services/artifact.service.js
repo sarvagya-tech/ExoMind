@@ -105,6 +105,11 @@ export async function createArtifactForWorkspace(
         workspaceId,
     });
 
+    // Fallback: Also trigger async generation directly so artifacts generate even if Inngest CLI is offline
+    void processArtifactById(artifact.id).catch((err) => {
+        console.warn("[Artifact Generation] Direct fallback warning:", err.message);
+    });
+
     return artifact;
 }
 
