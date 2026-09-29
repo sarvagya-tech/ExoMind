@@ -12,7 +12,16 @@ import { autoIndexSource } from "../../services/source.services.js";
  * @param {string} query - User search question
  * @returns {Promise<Array>} Array of chunk objects with citations
  */
-export async function retrieveWorkspaceContext(workspaceId, query) {
+export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
+    const workspaceId =
+        typeof workspaceIdOrObj === "object" && workspaceIdOrObj !== null
+            ? workspaceIdOrObj.workspaceId
+            : workspaceIdOrObj;
+    const query =
+        typeof workspaceIdOrObj === "object" && workspaceIdOrObj !== null
+            ? workspaceIdOrObj.query
+            : maybeQuery;
+
     const chunks = [];
 
     // 1. Try vector retrieval via Pinecone
