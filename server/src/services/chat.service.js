@@ -274,8 +274,31 @@ export async function streamWorkspaceChat(
                     }
                     : undefined;
 
+            const modelInstance = getChatLanguageModel(chatModel);
+            if (!modelInstance) {
+                const noticeText = [
+                    "### ⚠️ AI API Key Required",
+                    "",
+                    "To generate real-time AI grounded responses with **Google Gemini** or **OpenAI**, please add your API key to `server/.env`:",
+                    "",
+                    "```env",
+                    "GEMINI_API_KEY=your_gemini_api_key_here",
+                    "# or",
+                    "OPENAI_API_KEY=your_openai_api_key_here",
+                    "```",
+                    "",
+                    "After adding your key, you can ask any question and receive deep, structured answers with inline citations [1], [2]!",
+                ].join("\n");
+
+                writer.write({
+                    type: "text-delta",
+                    textDelta: noticeText,
+                });
+                return;
+            }
+
             const result = streamText({
-                model: getChatLanguageModel(chatModel),
+                model: modelInstance,
                 system: systemPrompt,
                 messages: await convertToModelMessages(contextMessages),
                 tools,

@@ -1,6 +1,6 @@
 
-import { google } from "@ai-sdk/google";
-import { openai } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { EMBEDDING_DIMENSIONS } from "./ai-config.js";
 
@@ -16,27 +16,24 @@ export function getChatLanguageModel(modelName) {
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (geminiKey) {
+        const googleProvider = createGoogleGenerativeAI({ apiKey: geminiKey });
         let target = "gemini-2.0-flash";
         if (modelName === "gemini-1.5-pro" || modelName === "gpt-4o") {
             target = "gemini-1.5-pro";
         }
-        return google(target);
+        return googleProvider(target);
     }
 
     if (openaiKey) {
+        const openaiProvider = createOpenAI({ apiKey: openaiKey });
         let target = "gpt-4o-mini";
         if (modelName === "gpt-4o" || modelName === "gemini-1.5-pro") {
             target = "gpt-4o";
         }
-        return openai(target);
+        return openaiProvider(target);
     }
 
-    // Default fallback to google if available or openai
-    try {
-        return google("gemini-2.0-flash");
-    } catch {
-        return openai("gpt-4o-mini");
-    }
+    return null;
 }
 
 /**
