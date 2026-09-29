@@ -1,257 +1,148 @@
-
 import { Pinecone } from "@pinecone-database/pinecone";
 import { EMBEDDING_DIMENSIONS } from "./ai-config.js";
+import "dotenv/config";
 
-
-// ------------------------------------
-// Configuration
-// ------------------------------------
-
-const indexName =
-    process.env.PINECONE_INDEX ?? "chaibook";
+const indexName = process.env.PINECONE_INDEX || "notebook";
 
 let pineconeClient = null;
 let indexReady = false;
 
-
-// ------------------------------------
-// Get Pinecone client
-// ------------------------------------
-
-function getPineconeClient() {
-
+/**
+ * Returns singleton Pinecone client.
+ */
+export function getPineconeClient() {
     if (!process.env.PINECONE_API_KEY) {
-        throw new Error(
-            "PINECONE_API_KEY is not configured"
-        );
+        throw new Error("PINECONE_API_KEY is not configured in server/.env");
     }
 
-    // Create client only once
     if (!pineconeClient) {
-
         pineconeClient = new Pinecone({
-            apiKey: process.env.PINECONE_API_KEY
+            apiKey: process.env.PINECONE_API_KEY,
         });
-
     }
 
     return pineconeClient;
 }
 
-
-// ------------------------------------
-// Wait until Pinecone index is ready
-// ------------------------------------
-
-async function waitForIndexReady(name) {
-
-    const client = getPineconeClient();
-
-    for (let attempt = 0; attempt < 30; attempt++) {
-
-        const description =
-            await client.describeIndex(name);
-
-        if (description.status?.ready) {
-            return;
-        }
-
-        // Wait 2 seconds
-        await new Promise(resolve =>
-            setTimeout(resolve, 2000)
-        );
-    }
-
-    throw new Error(
-        `Pinecone index "${name}" did not become ready in time`
-    );
-}
-
-
-// ------------------------------------
-// Make sure index exists
-// ------------------------------------
-
+/**
+ * Ensures the Pinecone index exists and is ready.
+ */
 export async function ensurePineconeIndex() {
-
-    // Already checked
     if (indexReady) {
         return;
     }
 
     const client = getPineconeClient();
 
-    const indexes =
-        await client.listIndexes();
+    try {
+        const indexes = await client.listIndexes();
+        const exists = indexes.indexes?.some((idx) => idx.name === indexName);
 
-    const exists =
-        indexes.indexes?.some(
-            index => index.name === indexName
-        );
+        if (!exists) {
+            console.log(`[Pinecone] Creating index "${indexName}" with dimension ${EMBEDDING_DIMENSIONS}...`);
+            await client.createIndex({
+                name: indexName,
+                dimension: EMBEDDING_DIMENSIONS,
+                metric: "cosine",
+                spec: {
+                    serverless: {
+                        cloud: "aws",
+                        region: "us-east-1",
+                    },
+                },
+            });
 
-
-    // Create index if it doesn't exist
-    if (!exists) {
-
-        await client.createIndex({
-
-            name: indexName,
-
-            dimension: EMBEDDING_DIMENSIONS,
-
-            metric: "cosine",
-
-            spec: {
-                serverless: {
-                    cloud: "aws",
-                    region: "us-east-1"
-                }
+            // Wait for index to transition to Ready
+            for (let i = 0; i < 30; i++) {
+                const desc = await client.describeIndex(indexName);
+                if (desc.status?.ready) break;
+                await new Promise((r) => setTimeout(r, 2000));
             }
+        }
 
-        });
-
-        // Wait until Pinecone finishes creating it
-        await waitForIndexReady(indexName);
+        indexReady = true;
+    } catch (err) {
+        console.warn(`[Pinecone] ensurePineconeIndex warning:`, err.message);
+        indexReady = true;
     }
-
-
-    indexReady = true;
 }
 
-
-// ------------------------------------
-// Get Pinecone index
-// ------------------------------------
-
+/**
+ * Returns Pinecone index handle for the configured index.
+ */
 export async function getPineconeIndex() {
-
     await ensurePineconeIndex();
-
     const client = getPineconeClient();
-
-    return client.index({
-        name: indexName
-    });
+    return client.index(indexName);
 }
 
-
-// ------------------------------------
-// Store vectors
-// ------------------------------------
-
-export async function upsertSourceVectors(
-    workspaceId,
-    records
-) {
-
-    // Nothing to store
-    if (records.length === 0) {
+/**
+ * Upsert records into workspace namespace.
+ */
+export async function upsertSourceVectors(workspaceId, records) {
+    if (!records || records.length === 0) {
         return;
     }
 
-    const index =
-        await getPineconeIndex();
-
-    // Each workspace gets its own namespace
-    const namespace =
-        index.namespace(workspaceId);
-
+    const index = await getPineconeIndex();
+    const namespace = index.namespace(workspaceId);
 
     const batchSize = 100;
-
-
-    // Upload 100 vectors at a time
-    for (
-        let i = 0;
-        i < records.length;
-        i += batchSize
-    ) {
-
-        const batch =
-            records.slice(i, i + batchSize);
-
+    for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
         await namespace.upsert({
-            records: batch
+            records: batch,
         });
     }
 }
 
-
-// ------------------------------------
-// Delete vectors of one source
-// ------------------------------------
-
-export async function deleteSourceVectors(
-    workspaceId,
-    sourceId
-) {
-
-    const index =
-        await getPineconeIndex();
-
-    await index
-        .namespace(workspaceId)
-        .deleteMany({
-
+/**
+ * Delete vectors belonging to a source from workspace namespace.
+ */
+export async function deleteSourceVectors(workspaceId, sourceId) {
+    try {
+        const index = await getPineconeIndex();
+        await index.namespace(workspaceId).deleteMany({
             filter: {
                 sourceId: {
-                    $eq: sourceId
-                }
-            }
-
+                    $eq: sourceId,
+                },
+            },
         });
+    } catch (err) {
+        console.warn(`[Pinecone] deleteSourceVectors warning:`, err.message);
+    }
 }
 
-
-// ------------------------------------
-// Delete complete workspace
-// ------------------------------------
-
-export async function deleteWorkspaceVectors(
-    workspaceId
-) {
-
-    const index =
-        await getPineconeIndex();
-
-    await index
-        .namespace(workspaceId)
-        .deleteAll();
+/**
+ * Delete all vectors in a workspace namespace.
+ */
+export async function deleteWorkspaceVectors(workspaceId) {
+    try {
+        const index = await getPineconeIndex();
+        await index.namespace(workspaceId).deleteAll();
+    } catch (err) {
+        console.warn(`[Pinecone] deleteWorkspaceVectors warning:`, err.message);
+    }
 }
 
+/**
+ * Query top matching vectors from workspace namespace.
+ */
+export async function queryWorkspaceVectors(workspaceId, vector, topK = 6) {
+    try {
+        const index = await getPineconeIndex();
+        const result = await index.namespace(workspaceId).query({
+            vector,
+            topK,
+            includeMetadata: true,
+        });
 
-// ------------------------------------
-// Search vectors
-// ------------------------------------
-
-export async function queryWorkspaceVectors(
-    workspaceId,
-    vector,
-    topK
-) {
-
-    const index =
-        await getPineconeIndex();
-
-    const result =
-        await index
-            .namespace(workspaceId)
-            .query({
-
-                vector,
-
-                topK,
-
-                includeMetadata: true
-
-            });
-
-
-    return result.matches ?? [];
+        return result.matches || [];
+    } catch (err) {
+        console.warn(`[Pinecone] queryWorkspaceVectors error:`, err.message);
+        return [];
+    }
 }
 
-
-// Export index name
-export {
-    indexName as PINECONE_INDEX_NAME
-};
+export { indexName as PINECONE_INDEX_NAME };

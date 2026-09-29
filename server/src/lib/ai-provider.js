@@ -1,6 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { EMBEDDING_DIMENSIONS } from "./ai-config.js";
 import "dotenv/config";
 
 const getGeminiKey = () =>
@@ -59,12 +60,13 @@ export function getLanguageModel(requestedModel = "") {
 }
 
 /**
- * Embeds an array of texts using either OpenAI or Google Gemini.
+ * Embeds an array of texts matching the exact Pinecone index dimension (1024).
  *
  * @param {string[]} texts - Array of string passages to embed
+ * @param {number} [targetDimensions=EMBEDDING_DIMENSIONS] - Target vector dimensions (default: 1024)
  * @returns {Promise<number[][]>} Array of embedding vectors
  */
-export async function generateEmbeddings(texts) {
+export async function generateEmbeddings(texts, targetDimensions = EMBEDDING_DIMENSIONS) {
     if (!texts || texts.length === 0) {
         return [];
     }
@@ -80,7 +82,7 @@ export async function generateEmbeddings(texts) {
         const response = await client.embeddings.create({
             model: "text-embedding-3-small",
             input: texts,
-            dimensions: 1536,
+            dimensions: targetDimensions,
         });
 
         return response.data
@@ -96,19 +98,22 @@ export async function generateEmbeddings(texts) {
         const results = await Promise.all(
             texts.map(async (text) => {
                 const res = await model.embedContent(text);
-                const values = res.embedding.values;
+                const values = res.embedding.values; // 768 dimensions
 
-                // If Pinecone index is 1536 dims and text-embedding-004 is 768 dims,
-                // pad or duplicate vector to 1536 dims gracefully
-                if (values.length === 768) {
-                    return [...values, ...values]; // 1536 dimensions
+                if (values.length === targetDimensions) {
+                    return values;
                 }
-                if (values.length < 1536) {
-                    const padded = new Array(1536).fill(0);
-                    for (let i = 0; i < values.length; i++) padded[i] = values[i];
+
+                // Adjust to match target dimensions (e.g. 1024)
+                if (values.length < targetDimensions) {
+                    const padded = new Array(targetDimensions).fill(0);
+                    for (let i = 0; i < values.length; i++) {
+                        padded[i] = values[i];
+                    }
                     return padded;
                 }
-                return values.slice(0, 1536);
+
+                return values.slice(0, targetDimensions);
             }),
         );
 

@@ -20,8 +20,8 @@ export const EMBEDDING_MODEL =
         ? "text-embedding-004"
         : "text-embedding-3-small";
 
-/** Vector dimension count — matches Pinecone index configuration. */
-export const EMBEDDING_DIMENSIONS = 1536;
+/** Vector dimension count — matches your Pinecone index configuration (1024). */
+export const EMBEDDING_DIMENSIONS = 1024;
 
 /** Target max characters per text chunk during source processing. */
 export const CHUNK_SIZE = 1000;
