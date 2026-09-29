@@ -155,6 +155,10 @@ export function Header({ currentWorkspace = null }) {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push("/about")}>
+                  <Sparkles className="h-3.5 w-3.5 mr-2 text-primary" />
+                  <span>About NotebookLM</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setMemoryOpen(true)}>
                   <Brain className="h-3.5 w-3.5 mr-2 text-purple-500" />
                   <span>Personal Memories</span>

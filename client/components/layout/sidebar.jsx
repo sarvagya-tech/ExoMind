@@ -319,6 +319,22 @@ export function Sidebar({
 
       {/* Bottom Actions & User Profile */}
       <div className="p-3 pb-6 border-t border-border space-y-2 bg-card/40">
+        {/* About NotebookLM Page Link */}
+        <Link
+          href="/about"
+          className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors text-left ${
+            pathname === "/about"
+              ? "bg-primary/15 text-primary font-semibold border border-primary/25 shadow-2xs"
+              : ""
+          } ${collapsed ? "justify-center px-2" : ""}`}
+          title="About NotebookLM"
+        >
+          <Sparkles className="h-4 w-4 text-primary shrink-0" />
+          {!collapsed && (
+            <span className="truncate flex-1 font-medium">About NotebookLM</span>
+          )}
+        </Link>
+
         {/* Memory Bank Button */}
         <button
           onClick={() => setMemoryOpen(true)}
