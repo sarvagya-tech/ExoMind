@@ -11,7 +11,7 @@ const downloadPdf = async (url)=>{
     return response.arrayBuffer();
 
 }
- const extractPdfFromBuffer = async(buffer)=>{
+export const extractPdfFromBuffer = async (buffer) => {
     const arrayBuffer = buffer instanceof Buffer
         ? buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
         : buffer;
