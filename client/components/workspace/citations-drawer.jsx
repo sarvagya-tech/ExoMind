@@ -39,6 +39,9 @@ export function CitationsDrawer({ citation, open, onOpenChange }) {
                   </span>
                 )}
               </div>
+              <DialogDescription className="sr-only">
+                Citation details and grounded document excerpt
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>

@@ -14,10 +14,42 @@ import { Button } from "@/components/ui/button";
 
 export function ChatMessage({ message, onCitationClick }) {
   const [copied, setCopied] = React.useState(false);
-  const isUser = message.role === "USER";
+  const isUser = message.role?.toUpperCase() === "USER";
+
+  const contentText =
+    typeof message.content === "string"
+      ? message.content
+      : message.content
+      ? JSON.stringify(message.content)
+      : "";
+
+  const citationsList = React.useMemo(() => {
+    if (Array.isArray(message.citations)) return message.citations;
+    if (typeof message.citations === "string") {
+      try {
+        const parsed = JSON.parse(message.citations);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, [message.citations]);
+
+  const formattedTime = React.useMemo(() => {
+    if (!message.createdAt) return "";
+    try {
+      const d = new Date(message.createdAt);
+      return isNaN(d.getTime())
+        ? ""
+        : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
+  }, [message.createdAt]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
+    navigator.clipboard.writeText(contentText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -45,20 +77,20 @@ export function ChatMessage({ message, onCitationClick }) {
       >
         {/* Text */}
         {isUser ? (
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          <p className="whitespace-pre-wrap">{contentText}</p>
         ) : (
           <div className="prose prose-sm dark:prose-invert max-w-none text-foreground prose-p:leading-relaxed prose-pre:p-3 prose-pre:bg-muted/70 prose-pre:rounded-2xl">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
+              {contentText}
             </ReactMarkdown>
           </div>
         )}
 
         {/* Citations Chips for Assistant */}
-        {!isUser && message.citations && message.citations.length > 0 && (
+        {!isUser && citationsList.length > 0 && (
           <div className="mt-3 pt-2">
             <div className="flex flex-wrap gap-1.5">
-              {message.citations.map((citation, i) => (
+              {citationsList.map((citation, i) => (
                 <button
                   key={i}
                   type="button"
@@ -66,12 +98,17 @@ export function ChatMessage({ message, onCitationClick }) {
                   className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/60 px-2.5 py-1 text-xs text-foreground transition-all hover:bg-muted hover:border-primary/40 text-left cursor-pointer"
                 >
                   <span className="font-semibold font-mono text-[10px] text-primary">[{i + 1}]</span>
-                  <span className="max-w-[150px] sm:max-w-[220px] truncate font-medium">
+                  <span className="max-w-[140px] sm:max-w-[200px] truncate font-medium">
                     {citation.sourceTitle || "Source Document"}
                   </span>
                   {citation.page && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground font-mono">
                       p.{citation.page}
+                    </span>
+                  )}
+                  {citation.chunkIndex !== undefined && (
+                    <span className="text-[10px] text-muted-foreground/70 font-mono">
+                      #chunk {Number(citation.chunkIndex) + 1}
                     </span>
                   )}
                 </button>
@@ -84,12 +121,7 @@ export function ChatMessage({ message, onCitationClick }) {
         {!isUser && (
           <div className="mt-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
             <span className="text-[10px] text-muted-foreground font-mono">
-              {message.createdAt
-                ? new Date(message.createdAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : ""}
+              {formattedTime}
             </span>
             <Button
               variant="ghost"

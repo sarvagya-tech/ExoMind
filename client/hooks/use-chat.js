@@ -57,6 +57,7 @@ export function useChatStream({
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamedText, setStreamedText] = useState("");
   const [streamCitations, setStreamCitations] = useState([]);
+  const [pendingUserMessage, setPendingUserMessage] = useState(null);
 
   const sendMessage = useCallback(
     async (content, existingMessages = []) => {
@@ -69,6 +70,7 @@ export function useChatStream({
         createdAt: new Date().toISOString(),
       };
 
+      setPendingUserMessage(newUserMessage);
       const updatedMessages = [...existingMessages, newUserMessage];
       setStreamedText("");
       setStreamCitations([]);
@@ -82,8 +84,11 @@ export function useChatStream({
           model,
           webSearch,
           selectedSourceIds,
-          onChunk: (text) => {
+          onChunk: (text, citations) => {
             setStreamedText(text);
+            if (Array.isArray(citations) && citations.length > 0) {
+              setStreamCitations(citations);
+            }
           },
           onDone: (finalText, citations, newConvId) => {
             const activeConvId = newConvId || conversationId;
@@ -104,6 +109,7 @@ export function useChatStream({
               ]);
             }
 
+            setPendingUserMessage(null);
             setStreamedText("");
             setStreamCitations([]);
             setIsStreaming(false);
@@ -117,11 +123,13 @@ export function useChatStream({
           },
           onError: (err) => {
             console.error("Stream error:", err);
+            setPendingUserMessage(null);
             setIsStreaming(false);
           },
         });
       } catch (err) {
         console.error("Failed to send message:", err);
+        setPendingUserMessage(null);
         setIsStreaming(false);
       }
     },
@@ -133,5 +141,6 @@ export function useChatStream({
     isStreaming,
     streamedText,
     streamCitations,
+    pendingUserMessage,
   };
 }

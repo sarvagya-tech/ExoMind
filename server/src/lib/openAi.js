@@ -17,17 +17,7 @@ export function getChatLanguageModel(modelName) {
 
     if (geminiKey) {
         const googleProvider = createGoogleGenerativeAI({ apiKey: geminiKey });
-        let target = "gemini-3.5-flash";
-        if (
-            modelName === "gemini-1.5-pro" ||
-            modelName === "gemini-2.5-pro" ||
-            modelName === "gemini-3.1-pro" ||
-            modelName === "gemini-pro" ||
-            modelName === "gpt-4o"
-        ) {
-            target = "gemini-pro-latest";
-        }
-        return googleProvider(target);
+        return googleProvider("gemini-3.5-flash");
     }
 
     if (openaiKey) {

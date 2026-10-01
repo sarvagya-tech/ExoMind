@@ -65,7 +65,7 @@ export function ChatPanel({
   const createConversation = useCreateConversation(workspaceId);
   const deleteConversation = useDeleteConversation(workspaceId);
 
-  const { sendMessage, isStreaming, streamedText, streamCitations } = useChatStream({
+  const { sendMessage, isStreaming, streamedText, streamCitations, pendingUserMessage } = useChatStream({
     workspaceId,
     conversationId: activeConvId,
     selectedSourceIds,
@@ -78,7 +78,7 @@ export function ChatPanel({
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamedText]);
+  }, [messages, streamedText, pendingUserMessage]);
 
   const handleSend = (textToSend) => {
     const text = textToSend || inputText;
@@ -222,7 +222,7 @@ export function ChatPanel({
 
       {/* Messages Stream */}
       <ScrollArea className="flex-1 py-4 px-1 sm:px-2">
-        {messages.length === 0 && !isStreaming ? (
+        {messages.length === 0 && !isStreaming && !pendingUserMessage ? (
           <div className="flex flex-col items-center justify-center py-20 text-center max-w-lg mx-auto space-y-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
               <Sparkles className="h-6 w-6" />
@@ -258,6 +258,13 @@ export function ChatPanel({
                 onCitationClick={setActiveCitation}
               />
             ))}
+
+            {/* Pending User Message (optimistic preview) */}
+            {pendingUserMessage && !messages.some((m) => m.id === pendingUserMessage.id) && (
+              <ChatMessage
+                message={pendingUserMessage}
+              />
+            )}
 
             {isStreaming && (
               <ChatMessage

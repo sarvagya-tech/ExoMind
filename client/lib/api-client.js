@@ -652,24 +652,37 @@ export const chatApi = {
 
     // Try live server stream first
     try {
+      const validConvId = (conversationId && !conversationId.startsWith("conv-")) ? conversationId : undefined;
+      const formattedMessages = messages.map((m) => ({
+        role: m.role?.toLowerCase() === "user" ? "user" : "assistant",
+        content: typeof m.content === "string" ? m.content : (m.content ? JSON.stringify(m.content) : ""),
+      }));
+
       const res = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          conversationId,
-          messages,
-          model,
-          webSearch,
-          selectedSourceIds,
+          conversationId: validConvId,
+          messages: formattedMessages,
+          model: model || undefined,
+          webSearch: !!webSearch,
+          selectedSourceIds: Array.isArray(selectedSourceIds) && selectedSourceIds.length > 0 ? selectedSourceIds : undefined,
         }),
       });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        console.warn(`[chatApi] Server responded with status ${res.status}: ${errText}`);
+        throw new Error(`Server returned ${res.status}: ${errText}`);
+      }
 
       if (res.ok && res.body) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let fullText = "";
         let buffer = "";
+        let citations = [];
 
         while (true) {
           const { done, value } = await reader.read();
@@ -685,12 +698,16 @@ export const chatApi = {
             if (!trimmed || trimmed === "data: [DONE]") continue;
 
             if (trimmed.startsWith("data: ")) {
-              const dataStr = trimmed.slice(6);
+              const dataStr = trimmed.slice(6).trim();
+              if (dataStr === "[DONE]") continue;
+
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.type === "text-delta") {
                   const delta = parsed.delta ?? parsed.textDelta ?? parsed.text ?? "";
                   fullText += delta;
+                } else if (parsed.type === "data-json" && Array.isArray(parsed.data?.citations)) {
+                  citations = parsed.data.citations;
                 } else if (typeof parsed === "string") {
                   fullText += parsed;
                 }
@@ -703,16 +720,22 @@ export const chatApi = {
               } catch {
                 fullText += trimmed.slice(2);
               }
-            } else if (!trimmed.startsWith("event:") && !trimmed.startsWith("id:")) {
+            } else if (
+              !trimmed.startsWith(":") &&
+              !trimmed.startsWith("event:") &&
+              !trimmed.startsWith("id:") &&
+              !trimmed.startsWith("d:") &&
+              !trimmed.startsWith("e:")
+            ) {
               fullText += trimmed;
             }
           }
 
-          onChunk?.(fullText);
+          onChunk?.(fullText, citations);
         }
 
         const newConvId = res.headers.get("x-conversation-id") || res.headers.get("X-Conversation-Id");
-        onDone?.(fullText, [], newConvId);
+        onDone?.(fullText, citations, newConvId);
         return;
       }
     } catch (e) {

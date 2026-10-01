@@ -7,11 +7,11 @@ export const conversationIdParamSchema = workspaceIdParamSchema.extend({
 });
 
 export const chatBodySchema = z.object({
-    conversationId: z.string().trim().min(1).optional(),
+    conversationId: z.string().trim().min(1).nullish().optional(),
     messages: z.array(z.record(z.string(), z.unknown())).min(1),
-    model: z.string().optional(),
-    webSearch: z.boolean().optional(),
-    selectedSourceIds: z.array(z.string()).optional(),
+    model: z.string().nullish().optional(),
+    webSearch: z.boolean().nullish().optional(),
+    selectedSourceIds: z.array(z.string()).nullish().optional(),
 });
 
 export const createConversationSchema = z.object({

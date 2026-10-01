@@ -154,16 +154,18 @@ async function resolveConversation(
     firstMessage,
 ) {
     if (conversationId) {
-        const existing = await findConversationByIdAndWorkspaceId(
-            conversationId,
-            workspaceId,
-        );
+        try {
+            const existing = await findConversationByIdAndWorkspaceId(
+                conversationId,
+                workspaceId,
+            );
 
-        if (!existing) {
-            throw new NotFoundError("Conversation not found");
+            if (existing) {
+                return existing;
+            }
+        } catch {
+            // Ignore lookup error and create new conversation
         }
-
-        return existing;
     }
 
     return createConversationRecord(

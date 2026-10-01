@@ -20,19 +20,26 @@ function normalizeWord(w) {
 }
 
 /**
- * Cleans boilerplate lines and extracts structured semantic passages from source text.
+ * Cleans boilerplate lines and extracts structured semantic passages with page awareness from source text.
  */
 export function extractCleanSemanticPassages(rawText) {
     if (!rawText) return [];
 
     const lines = rawText.split("\n").map((l) => l.trim());
-    const cleanLines = [];
+    const cleanItems = []; // Array of { text, page }
+    let currentPage = 1;
 
     for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
         if (!l) continue;
-        if (/^##\s*Page\s*\d+/i.test(l)) continue;
-        if (/^Page\s*\d+/i.test(l)) continue;
+
+        // Detect page markers like "## Page 2" or "Page 2"
+        const pageMatch = l.match(/^##\s*Page\s*(\d+)/i) || l.match(/^Page\s*(\d+)/i);
+        if (pageMatch) {
+            currentPage = parseInt(pageMatch[1], 10) || currentPage;
+            continue;
+        }
+
         if (/^By\s+/i.test(l)) continue;
         if (/Downloaded from/i.test(l)) continue;
         if (/Made by/i.test(l)) continue;
@@ -40,47 +47,65 @@ export function extractCleanSemanticPassages(rawText) {
         if (/^\d+$/.test(l)) continue; // lone page numbers
 
         // Concatenate wrapped lines
-        if (cleanLines.length > 0) {
-            const prev = cleanLines[cleanLines.length - 1];
+        if (cleanItems.length > 0) {
+            const prevItem = cleanItems[cleanItems.length - 1];
+            const prev = prevItem.text;
             const isPrevBullet = /^[●\-\*]|\d+\.\s*/.test(prev);
             const isCurrBullet = /^[●\-\*]|\d+\.\s*/.test(l);
             const isCurrHeader = /^(?:Unit\s*\d+|[0-9]+\.\s+[A-Z]|[A-Z][A-Za-z0-9\s,\-\/]+:)$/.test(l);
 
             if (isPrevBullet && !isCurrBullet && !isCurrHeader && !prev.endsWith(".") && !prev.endsWith(":")) {
-                cleanLines[cleanLines.length - 1] = prev + " " + l;
+                prevItem.text = prev + " " + l;
                 continue;
             }
         }
-        cleanLines.push(l);
+        cleanItems.push({ text: l, page: currentPage });
     }
 
-    // Group into coherent semantic blocks
+    // Group into coherent semantic blocks with preserved page info
     const blocks = [];
     let currentBlock = [];
     let currentLen = 0;
+    let blockPage = 1;
 
-    for (let i = 0; i < cleanLines.length; i++) {
-        const line = cleanLines[i];
+    for (let i = 0; i < cleanItems.length; i++) {
+        const item = cleanItems[i];
+        const line = item.text;
         const isHeader = /^(?:Unit\s*\d+:?|[0-9]+\.\s+[A-Z]|[A-Z][A-Za-z0-9\s,\-\/]{3,50}:)/.test(line);
 
+        if (currentBlock.length === 0) {
+            blockPage = item.page;
+        }
+
         if (isHeader && currentBlock.length > 0 && currentLen > 400) {
-            blocks.push(currentBlock.join("\n"));
+            blocks.push({
+                text: currentBlock.join("\n"),
+                page: blockPage,
+            });
             currentBlock = [];
             currentLen = 0;
+            blockPage = item.page;
         }
 
         currentBlock.push(line);
         currentLen += line.length;
 
         if (currentLen > 1600) {
-            blocks.push(currentBlock.join("\n"));
+            blocks.push({
+                text: currentBlock.join("\n"),
+                page: blockPage,
+            });
             currentBlock = [];
             currentLen = 0;
+            blockPage = item.page;
         }
     }
 
     if (currentBlock.length > 0) {
-        blocks.push(currentBlock.join("\n"));
+        blocks.push({
+            text: currentBlock.join("\n"),
+            page: blockPage,
+        });
     }
 
     return blocks;
@@ -252,8 +277,10 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
             if (source.content) {
                 const passages = extractCleanSemanticPassages(source.content);
 
-                passages.forEach((passage, idx) => {
-                    const score = scorePassage(passage, query, queryTokens, normalizedQueryTokens);
+                passages.forEach((passageObj, idx) => {
+                    const passageText = typeof passageObj === "object" ? passageObj.text : passageObj;
+                    const passagePage = typeof passageObj === "object" ? passageObj.page : 1;
+                    const score = scorePassage(passageText, query, queryTokens, normalizedQueryTokens);
                     if (score > 0 || effectiveSources.length === 1) {
                         semanticChunks.push({
                             sourceId: source.id,
@@ -261,7 +288,8 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
                             sourceType: source.type,
                             chunkId: `${source.id}-${idx}`,
                             chunkIndex: idx,
-                            text: passage,
+                            page: passagePage,
+                            text: passageText,
                             score: score || 1,
                             passagesRef: passages,
                         });
@@ -287,9 +315,10 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
 
             // If this passage has a subsequent continuation block, include it for completeness
             if (chunk.passagesRef && chunk.passagesRef[chunk.chunkIndex + 1] && chunk.score > 20) {
-                const nextPassage = chunk.passagesRef[chunk.chunkIndex + 1];
-                if (nextPassage && !nextPassage.toLowerCase().startsWith("unit ")) {
-                    chunk.text = `${chunk.text}\n\n${nextPassage}`;
+                const nextPassageObj = chunk.passagesRef[chunk.chunkIndex + 1];
+                const nextText = typeof nextPassageObj === "object" ? nextPassageObj.text : nextPassageObj;
+                if (nextText && !nextText.toLowerCase().startsWith("unit ")) {
+                    chunk.text = `${chunk.text}\n\n${nextText}`;
                 }
             }
 
@@ -319,19 +348,22 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
 }
 
 /**
- * Synthesizes an intelligent pedagogical markdown answer from retrieved passages for offline/fallback mode.
+ * Synthesizes a friendly, intelligent pedagogical markdown answer from retrieved passages for offline/fallback mode.
  */
 export function synthesizeFallbackGroundedAnswer(query, chunks) {
     if (!chunks || chunks.length === 0) {
         return [
-            "I don't see any sources uploaded to this notebook yet.",
+            "Hey! I don't see any sources uploaded to this notebook yet.",
             "",
-            "Please add some PDF files, websites, YouTube videos, or text notes on the left panel so I can ground my responses with precise citations!",
+            "Drop in some PDF files, text notes, websites, or YouTube links on the left panel, and I'll break everything down for you step-by-step with exact page and chunk citations! 🚀",
         ].join("\n");
     }
 
     const primaryChunk = chunks[0];
     const sourceTitle = primaryChunk.sourceTitle || "Grounded Material";
+    const pageNum = primaryChunk.page || 1;
+    const chunkNum = primaryChunk.chunkIndex !== undefined ? primaryChunk.chunkIndex + 1 : 1;
+    const citationTag = `[1] (Page ${pageNum}, Chunk #${chunkNum})`;
 
     const lines = primaryChunk.text
         .split("\n")
@@ -339,7 +371,7 @@ export function synthesizeFallbackGroundedAnswer(query, chunks) {
         .filter((l) => l && !l.startsWith("## Page") && !l.startsWith("By ") && !l.includes("Downloaded from") && !l.startsWith("Made by"));
 
     // Extract section heading
-    let title = "Grounded Knowledge Overview";
+    let title = "Core Concepts & Architecture";
     const headerLine = lines.find((l) => /^(?:[0-9]+\.\s+|Unit\s*\d+:?\s*)?[A-Z][A-Za-z0-9\s,\-\/]+:?$/.test(l));
     if (headerLine) {
         title = headerLine.replace(/^#+\s*/, "").replace(/^Unit\s*\d+:?\s*/i, "").replace(/:$/, "").trim();
@@ -357,41 +389,48 @@ export function synthesizeFallbackGroundedAnswer(query, chunks) {
         // Numbered point: "1. Distributed Computing (1950s): Early computing..."
         const stageMatch = line.match(/^([0-9]+\.\s+[A-Z][A-Za-z0-9\s\(\)\-\/]+):\s*(.+)$/);
         if (stageMatch) {
-            formattedPoints.push(`### ${stageMatch[1]}\n${stageMatch[2]} [1]`);
+            formattedPoints.push(`### ${stageMatch[1]}\n${stageMatch[2]} ${citationTag}`);
             continue;
         }
 
         // Bullet point: "● Mainframe Computing: Many users accessed..."
         const bulletMatch = line.match(/^[●\-\*]\s*([A-Z][A-Za-z0-9\s\(\)\-\/]+):\s*(.+)$/);
         if (bulletMatch) {
-            formattedPoints.push(`- **${bulletMatch[1]}**: ${bulletMatch[2]} [1]`);
+            formattedPoints.push(`- **${bulletMatch[1]}**: ${bulletMatch[2]} ${citationTag}`);
             continue;
         }
 
         if (line.length > 30 && !line.startsWith("Downloaded from")) {
-            formattedPoints.push(`${line} [1]`);
+            formattedPoints.push(`${line} ${citationTag}`);
         }
     }
 
     return [
         `## ${title}`,
         "",
-        `Based on your grounded workspace sources (**[1] ${sourceTitle}**):`,
+        `Hey! Let's dive into **${title}** together. Here is a clear, step-by-step breakdown based directly on your source material in **${sourceTitle}** (${citationTag}):`,
         "",
         formattedPoints.join("\n\n"),
         "",
         "---",
-        `*Grounded in [1] ${sourceTitle}*`,
+        `💡 *Grounded in **${sourceTitle}** • Page ${pageNum}, Chunk #${chunkNum}. Let me know if you want to quiz yourself or explore any part in more detail!*`,
     ].join("\n");
 }
 
 /**
- * Builds the system prompt for the chat model, injecting citations and context.
+ * Builds the system prompt for the chat model, injecting citations and friendly teaching context.
  */
 export function buildChatSystemPrompt(input) {
     const sections = [
-        "You are NotebookLM Studio, an intelligent research and learning assistant.",
-        "Your role is to deeply understand the user's grounded sources, explain concepts clearly with rich structure, headings, bullet points, and precise inline citations [1], [2] matching the source numbers.",
+        "You are NotebookLM, a friendly, engaging study buddy and mentor who loves teaching. You explain complex ideas clearly, intuitively, and conversationally — like a brilliant friend sharing notes and insights over coffee.",
+        "",
+        "### 🌟 Core Persona & Teaching Guidelines:",
+        "- **Warm & Encouraging Friend**: Be conversational, approachable, and enthusiastic. Use natural transitions ('Here is how this works...', 'Think of it this way...', 'Let's break this down step-by-step!'). Never be robotic, stiff, or dry.",
+        "- **Preserve Original Depth & Technical Accuracy**: Teach the concepts thoroughly without dumbing down or removing essential details from the grounded sources. Maintain all original technical depth, definitions, architectures, mechanisms, and nuances from the user's materials.",
+        "- **Structured Pedagogical Format**: Use clear Markdown headings (##, ###), bullet points, bold key terms, and visual lists so the explanation is a joy to read and study.",
+        "- **Exact Inline Citations with Page & Chunk Number**: Every time you teach or cite a concept, definition, mechanism, or stage from a grounded source, cite it explicitly with its Source Number, Page Number (if available), and Chunk Number.",
+        "  - Format: `[1] (Page X, Chunk #Y)` or `[1] (Page X)` or `[2] (Chunk #Y)` matching the Grounded Sources listed below.",
+        "- **Engaging Takeaway / Study Check-In**: Wrap up each explanation with a friendly summary or study tip encouraging the user to explore deeper or test their recall.",
     ];
 
     // Add web-search instructions
@@ -428,7 +467,7 @@ export function buildChatSystemPrompt(input) {
         sections.push(
             input.webSearchEnabled
                 ? "Use live web search to answer the user's question."
-                : "Answer helpfully from general knowledge and encourage the user to add documents or websites on the left panel.",
+                : "Answer helpfully as a friendly teacher from general knowledge and warmly encourage the user to add documents or websites on the left panel so you can cite exact pages and chunks.",
             "Do not invent citations when no sources are present.",
         );
 
@@ -438,9 +477,9 @@ export function buildChatSystemPrompt(input) {
     // Convert retrieved chunks into context for the AI
     const context = input.chunks
         .map((chunk, index) => {
-            const label =
-                `[${index + 1}] ${chunk.sourceTitle} (${chunk.sourceType})` +
-                (chunk.page ? `, page ${chunk.page}` : "");
+            const pageTag = chunk.page ? `Page ${chunk.page}` : "Document";
+            const chunkNum = chunk.chunkIndex !== undefined ? chunk.chunkIndex + 1 : index + 1;
+            const label = `[${index + 1}] "${chunk.sourceTitle}" (${chunk.sourceType}) — 📍 ${pageTag} | 🔖 Chunk #${chunkNum}`;
 
             return `### Source ${index + 1}: ${label}\n${chunk.text}`;
         })
@@ -451,10 +490,10 @@ export function buildChatSystemPrompt(input) {
         context,
         "",
         "### Instructions for Answering:",
-        "1. Answer the user's question thoroughly, clearly, and insightfully based on the Grounded Workspace Sources provided above.",
-        "2. Format your response with clean Markdown: use descriptive headings (##, ###), bullet lists, concise explanations, and structured summaries.",
-        "3. Cite your sources inline using [1], [2], etc. corresponding to the numbered source blocks whenever stating facts from that source.",
-        "4. Synthesize the concepts in your own structured, pedagogical words rather than simply copy-pasting raw text unformatted.",
+        "1. **Friendly Hook**: Begin with an engaging, friendly introduction explaining what the topic is all about.",
+        "2. **In-Depth Structured Breakdown**: Teach the concepts step-by-step with descriptive headings (##, ###), bullet points, and bold terms based strictly on the grounded sources.",
+        "3. **Exact Page & Chunk Citations**: Tag key definitions, mechanisms, and stages with `[SourceNum] (Page X, Chunk #Y)` so the user knows exactly where in their documents it appears.",
+        "4. **Takeaway**: Conclude with a warm, helpful summary or encouraging study check-in.",
     );
 
     return sections.join("\n");
