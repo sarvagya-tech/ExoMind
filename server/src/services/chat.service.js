@@ -19,6 +19,7 @@ import { enqueueConversationSummarize } from "../lib/conversation-events.js";
 import {
     buildChatSystemPrompt,
     retrieveWorkspaceContext,
+    synthesizeFallbackGroundedAnswer,
 } from "../lib/rag/retrieve.js";
 import {
     createConversationRecord,
@@ -220,7 +221,11 @@ export async function streamWorkspaceChat(
     });
 
     const [retrievedChunks, userMemories] = await Promise.all([
-        retrieveWorkspaceContext(workspaceId, userText),
+        retrieveWorkspaceContext({
+            workspaceId,
+            query: userText,
+            sourceIds: input.selectedSourceIds,
+        }),
         searchUserMemories(userId, userText),
     ]);
 
@@ -276,23 +281,37 @@ export async function streamWorkspaceChat(
 
             const modelInstance = getChatLanguageModel(chatModel);
             if (!modelInstance) {
-                const noticeText = [
-                    "### ⚠️ AI API Key Required",
+                const synthesizedAnswer = synthesizeFallbackGroundedAnswer(
+                    userText,
+                    retrievedChunks,
+                );
+
+                const fullAnswer = [
+                    synthesizedAnswer,
                     "",
-                    "To generate real-time AI grounded responses with **Google Gemini** or **OpenAI**, please add your API key to `server/.env`:",
-                    "",
-                    "```env",
-                    "GEMINI_API_KEY=your_gemini_api_key_here",
-                    "# or",
-                    "OPENAI_API_KEY=your_openai_api_key_here",
-                    "```",
-                    "",
-                    "After adding your key, you can ask any question and receive deep, structured answers with inline citations [1], [2]!",
+                    "> 💡 *Tip: Add `GEMINI_API_KEY` to `server/.env` to enable real-time Gemini 2.0 Flash reasoning.*",
                 ].join("\n");
 
+                const textPartId = `text-${Date.now()}`;
                 writer.write({
-                    type: "text-delta",
-                    textDelta: noticeText,
+                    type: "text-start",
+                    id: textPartId,
+                });
+
+                const words = fullAnswer.split(" ");
+                for (let i = 0; i < words.length; i += 3) {
+                    const chunk = words.slice(i, i + 3).join(" ") + (i + 3 < words.length ? " " : "");
+                    writer.write({
+                        type: "text-delta",
+                        id: textPartId,
+                        textDelta: chunk,
+                    });
+                    await new Promise((r) => setTimeout(r, 15));
+                }
+
+                writer.write({
+                    type: "text-end",
+                    id: textPartId,
                 });
                 return;
             }

@@ -669,15 +669,49 @@ export const chatApi = {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let fullText = "";
+        let buffer = "";
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
-          fullText += chunk;
+          buffer += chunk;
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed === "data: [DONE]") continue;
+
+            if (trimmed.startsWith("data: ")) {
+              const dataStr = trimmed.slice(6);
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.type === "text-delta" && parsed.textDelta) {
+                  fullText += parsed.textDelta;
+                } else if (typeof parsed === "string") {
+                  fullText += parsed;
+                }
+              } catch {
+                fullText += dataStr;
+              }
+            } else if (trimmed.startsWith("0:")) {
+              try {
+                fullText += JSON.parse(trimmed.slice(2));
+              } catch {
+                fullText += trimmed.slice(2);
+              }
+            } else if (!trimmed.startsWith("event:") && !trimmed.startsWith("id:")) {
+              fullText += trimmed;
+            }
+          }
+
           onChunk?.(fullText);
         }
-        onDone?.(fullText, []);
+
+        const newConvId = res.headers.get("x-conversation-id");
+        onDone?.(fullText, [], newConvId);
         return;
       }
     } catch (e) {

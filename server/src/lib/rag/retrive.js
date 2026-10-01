@@ -4,8 +4,140 @@ import { queryWorkspaceVectors } from "../pinecone.js";
 import { findSourcesByWorkspaceId } from "../../repository/source.repository.js";
 
 /**
- * Retrieves relevant source chunks for a chat query via Pinecone vector similarity,
- * with fail-safe fallback to database source content.
+ * Normalizes words for fuzzy/stemmed matching.
+ */
+function normalizeWord(w) {
+    return w
+        .toLowerCase()
+        .replace(/^evoluation$/, "evolution")
+        .replace(/^virtulization$/, "virtualization")
+        .replace(/^charateristics$/, "characteristics")
+        .replace(/ies$/, "y")
+        .replace(/s$/, "")
+        .replace(/ing$/, "")
+        .replace(/tion$/, "")
+        .replace(/ment$/, "");
+}
+
+/**
+ * Cleans boilerplate lines and extracts structured semantic passages from source text.
+ */
+export function extractCleanSemanticPassages(rawText) {
+    if (!rawText) return [];
+
+    const lines = rawText.split("\n").map((l) => l.trim());
+    const cleanLines = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        if (!l) continue;
+        if (/^##\s*Page\s*\d+/i.test(l)) continue;
+        if (/^Page\s*\d+/i.test(l)) continue;
+        if (/^By\s+/i.test(l)) continue;
+        if (/Downloaded from/i.test(l)) continue;
+        if (/Made by/i.test(l)) continue;
+        if (/^---$/.test(l)) continue;
+        if (/^\d+$/.test(l)) continue; // lone page numbers
+
+        // Concatenate wrapped lines
+        if (cleanLines.length > 0) {
+            const prev = cleanLines[cleanLines.length - 1];
+            const isPrevBullet = /^[●\-\*]|\d+\.\s*/.test(prev);
+            const isCurrBullet = /^[●\-\*]|\d+\.\s*/.test(l);
+            const isCurrHeader = /^(?:Unit\s*\d+|[0-9]+\.\s+[A-Z]|[A-Z][A-Za-z0-9\s,\-\/]+:)$/.test(l);
+
+            if (isPrevBullet && !isCurrBullet && !isCurrHeader && !prev.endsWith(".") && !prev.endsWith(":")) {
+                cleanLines[cleanLines.length - 1] = prev + " " + l;
+                continue;
+            }
+        }
+        cleanLines.push(l);
+    }
+
+    // Group into coherent semantic blocks
+    const blocks = [];
+    let currentBlock = [];
+    let currentLen = 0;
+
+    for (let i = 0; i < cleanLines.length; i++) {
+        const line = cleanLines[i];
+        const isHeader = /^(?:Unit\s*\d+:?|[0-9]+\.\s+[A-Z]|[A-Z][A-Za-z0-9\s,\-\/]{3,50}:)/.test(line);
+
+        if (isHeader && currentBlock.length > 0 && currentLen > 400) {
+            blocks.push(currentBlock.join("\n"));
+            currentBlock = [];
+            currentLen = 0;
+        }
+
+        currentBlock.push(line);
+        currentLen += line.length;
+
+        if (currentLen > 1600) {
+            blocks.push(currentBlock.join("\n"));
+            currentBlock = [];
+            currentLen = 0;
+        }
+    }
+
+    if (currentBlock.length > 0) {
+        blocks.push(currentBlock.join("\n"));
+    }
+
+    return blocks;
+}
+
+/**
+ * Calculates a relevance score between a passage and the user query.
+ */
+function scorePassage(passage, query, queryTokens, normalizedQueryTokens) {
+    let score = 0;
+    const lower = passage.toLowerCase();
+    const cleanQuery = query.toLowerCase().trim();
+
+    // 1. Exact query phrase match
+    if (cleanQuery.length > 5 && lower.includes(cleanQuery)) {
+        score += 35;
+    }
+
+    // 2. First line / Section title match
+    const firstLine = passage.split("\n")[0].toLowerCase();
+    for (let i = 0; i < queryTokens.length; i++) {
+        const raw = queryTokens[i];
+        const norm = normalizedQueryTokens[i];
+
+        if (firstLine.includes(raw) || firstLine.includes(norm)) {
+            score += 15;
+        }
+    }
+
+    // 3. Keyword matching and density
+    let matchedTokenCount = 0;
+    for (let i = 0; i < queryTokens.length; i++) {
+        const raw = queryTokens[i];
+        const norm = normalizedQueryTokens[i];
+
+        const rawRegex = new RegExp(`\\b${raw}\\b`, "gi");
+        const rawMatches = lower.match(rawRegex);
+        if (rawMatches) {
+            score += Math.min(rawMatches.length * 2.5, 12);
+            matchedTokenCount++;
+        } else if (norm && lower.includes(norm)) {
+            score += 2;
+            matchedTokenCount++;
+        }
+    }
+
+    // Boost if all major query tokens appear in the passage
+    if (queryTokens.length > 1 && matchedTokenCount >= queryTokens.length) {
+        score += 20;
+    }
+
+    return score;
+}
+
+/**
+ * Retrieves relevant source chunks for a chat query via Pinecone vector similarity
+ * and multi-stage semantic passage matching.
  */
 export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
     const workspaceId =
@@ -16,8 +148,12 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
         typeof workspaceIdOrObj === "object" && workspaceIdOrObj !== null
             ? workspaceIdOrObj.query
             : maybeQuery;
+    const sourceIds =
+        typeof workspaceIdOrObj === "object" && workspaceIdOrObj !== null
+            ? workspaceIdOrObj.sourceIds || workspaceIdOrObj.selectedSourceIds
+            : undefined;
 
-    const chunks = [];
+    const vectorChunks = [];
 
     // 1. Try vector retrieval via Pinecone
     try {
@@ -27,33 +163,31 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
             const matches = await queryWorkspaceVectors(
                 workspaceId,
                 embedding,
-                RAG_TOP_K,
+                RAG_TOP_K * 2,
             );
 
             for (const match of matches) {
                 const score = match.score ?? 0;
-
-                if (score < 0.25) {
-                    continue;
-                }
+                if (score < 0.35) continue;
 
                 const metadata = match.metadata;
-
                 if (
                     metadata &&
                     typeof metadata.sourceId === "string" &&
                     typeof metadata.sourceTitle === "string" &&
                     typeof metadata.text === "string"
                 ) {
-                    chunks.push({
+                    if (sourceIds?.length && !sourceIds.includes(metadata.sourceId)) {
+                        continue;
+                    }
+
+                    vectorChunks.push({
                         sourceId: metadata.sourceId,
                         sourceTitle: metadata.sourceTitle,
                         sourceType: metadata.sourceType || "SOURCE",
                         chunkId: metadata.chunkId || match.id,
                         chunkIndex: Number(metadata.chunkIndex ?? 0),
-                        ...(typeof metadata.page === "number"
-                            ? { page: metadata.page }
-                            : {}),
+                        ...(typeof metadata.page === "number" ? { page: metadata.page } : {}),
                         text: metadata.text,
                         score,
                     });
@@ -64,48 +198,158 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
         console.warn("[RAG] Pinecone vector search warning:", err.message);
     }
 
-    // 2. If Pinecone had matches, return them
-    if (chunks.length > 0) {
-        return chunks;
-    }
-
-    // 3. Fallback: Query all ready sources in this workspace directly from PostgreSQL
+    // 2. High-precision semantic text search across workspace sources
+    const semanticChunks = [];
     try {
-        const dbSources = await findSourcesByWorkspaceId(workspaceId);
-        const readySources = dbSources.filter(
+        const allSources = await findSourcesByWorkspaceId(workspaceId);
+        const readySources = allSources.filter(
             (s) => s.status === "READY" && s.content && s.content.trim().length > 0,
         );
 
-        if (readySources.length > 0) {
-            for (const source of readySources) {
-                const fullText = source.content.trim();
+        const targetSources = sourceIds?.length
+            ? readySources.filter((s) => sourceIds.includes(s.id))
+            : readySources;
 
-                // Split source content into passages of ~1500 chars
-                const segmentSize = 1500;
-                const segments = [];
-                for (let i = 0; i < fullText.length; i += segmentSize) {
-                    segments.push(fullText.slice(i, i + segmentSize));
-                    if (segments.length >= 4) break;
-                }
+        const effectiveSources = targetSources.length > 0 ? targetSources : readySources;
 
-                for (let idx = 0; idx < segments.length; idx++) {
-                    chunks.push({
+        const stopWords = new Set([
+            "teach", "me", "the", "of", "in", "and", "a", "an", "to", "for", "is", "are",
+            "what", "how", "explain", "tell", "about", "give", "can", "you", "please", "with",
+        ]);
+
+        const queryTokens = (query || "")
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter((w) => w.length >= 3 && !stopWords.has(w));
+
+        const normalizedQueryTokens = queryTokens.map(normalizeWord);
+
+        for (const source of effectiveSources) {
+            const passages = extractCleanSemanticPassages(source.content);
+
+            passages.forEach((passage, idx) => {
+                const score = scorePassage(passage, query, queryTokens, normalizedQueryTokens);
+                if (score > 0 || effectiveSources.length === 1) {
+                    semanticChunks.push({
                         sourceId: source.id,
                         sourceTitle: source.title,
                         sourceType: source.type,
                         chunkId: `${source.id}-${idx}`,
                         chunkIndex: idx,
-                        text: segments[idx],
-                        score: 0.9,
+                        text: passage,
+                        score: score || 1,
+                        passagesRef: passages,
                     });
                 }
-            }
+            });
         }
-    } catch (dbErr) {
-        console.warn("[RAG] DB source fallback warning:", dbErr.message);
+
+        semanticChunks.sort((a, b) => b.score - a.score);
+    } catch (err) {
+        console.warn("[RAG] Semantic search error:", err.message);
     }
 
-    return chunks;
+    // 3. Merge & Deduplicate Results
+    const combined = [];
+    const seenTexts = new Set();
+
+    // Prefer high scoring semantic matches
+    for (const chunk of semanticChunks.slice(0, 6)) {
+        const key = chunk.text.slice(0, 100);
+        if (!seenTexts.has(key)) {
+            seenTexts.add(key);
+
+            // If this passage has a subsequent continuation block, include it for full completeness
+            if (chunk.passagesRef && chunk.passagesRef[chunk.chunkIndex + 1] && chunk.score > 20) {
+                const nextPassage = chunk.passagesRef[chunk.chunkIndex + 1];
+                if (nextPassage && !nextPassage.toLowerCase().startsWith("unit ")) {
+                    chunk.text = `${chunk.text}\n\n${nextPassage}`;
+                }
+            }
+
+            combined.push({
+                sourceId: chunk.sourceId,
+                sourceTitle: chunk.sourceTitle,
+                sourceType: chunk.sourceType,
+                chunkId: chunk.chunkId,
+                chunkIndex: chunk.chunkIndex,
+                text: chunk.text,
+                score: chunk.score,
+            });
+        }
+    }
+
+    // Append vector chunks if any
+    for (const chunk of vectorChunks) {
+        const key = chunk.text.slice(0, 100);
+        if (!seenTexts.has(key) && combined.length < 8) {
+            seenTexts.add(key);
+            combined.push(chunk);
+        }
+    }
+
+    return combined;
+}
+
+/**
+ * Synthesizes an intelligent pedagogical markdown answer from retrieved passages for offline/fallback mode.
+ */
+export function synthesizeFallbackGroundedAnswer(query, chunks) {
+    if (!chunks || chunks.length === 0) {
+        return [
+            "I don't see any sources uploaded to this notebook yet.",
+            "",
+            "Please add some PDF files, websites, YouTube videos, or text notes on the left panel so I can ground my responses with precise citations!",
+        ].join("\n");
+    }
+
+    const primaryChunk = chunks[0];
+    const sourceTitle = primaryChunk.sourceTitle || "Grounded Material";
+
+    const lines = primaryChunk.text
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith("## Page") && !l.startsWith("By ") && !l.includes("Downloaded from"));
+
+    // Extract section heading
+    let title = "Grounded Knowledge Overview";
+    const headerLine = lines.find((l) => /^(?:[0-9]+\.\s+|Unit\s*\d+:?\s*)?[A-Z][A-Za-z0-9\s,\-\/]+:?$/.test(l));
+    if (headerLine) {
+        title = headerLine.replace(/^#+\s*/, "").replace(/^Unit\s*\d+:?\s*/i, "").replace(/:$/, "").trim();
+    }
+
+    const formattedPoints = [];
+    for (const line of lines) {
+        if (line === headerLine) continue;
+
+        // Numbered or bulleted point: "1. Distributed Computing (1950s): Early computing..."
+        const stageMatch = line.match(/^([0-9]+\.\s+[A-Z][A-Za-z0-9\s\(\)\-\/]+):\s*(.+)$/);
+        if (stageMatch) {
+            formattedPoints.push(`### ${stageMatch[1]}\n${stageMatch[2]} [1]\n`);
+            continue;
+        }
+
+        const bulletMatch = line.match(/^[●\-\*]\s*([A-Z][A-Za-z0-9\s\(\)\-\/]+):\s*(.+)$/);
+        if (bulletMatch) {
+            formattedPoints.push(`- **${bulletMatch[1]}**: ${bulletMatch[2]} [1]`);
+            continue;
+        }
+
+        if (line.length > 25 && !line.startsWith("Downloaded from")) {
+            formattedPoints.push(`${line} [1]`);
+        }
+    }
+
+    return [
+        `## ${title}`,
+        "",
+        `Based on your grounded workspace sources (**[1] ${sourceTitle}**):`,
+        "",
+        formattedPoints.join("\n\n"),
+        "",
+        "---",
+        `*Grounded in [1] ${sourceTitle}*`,
+    ].join("\n");
 }
 
 /**
