@@ -38,7 +38,7 @@ import {
 export function ChatPanel({
   workspaceId,
   selectedSourceIds,
-  defaultModel = "gpt-4o-mini",
+  defaultModel = "gemini-3.5-flash",
 }) {
   const { data: conversations = [] } = useConversations(workspaceId);
   const [selectedConvId, setSelectedConvId] = React.useState(null);
@@ -71,6 +71,9 @@ export function ChatPanel({
     selectedSourceIds,
     model,
     webSearch,
+    onConversationCreated: (newId) => {
+      setSelectedConvId(newId);
+    },
   });
 
   React.useEffect(() => {

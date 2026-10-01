@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-    convertToModelMessages,
     createUIMessageStream,
     isStepCount,
     pipeUIMessageStreamToResponse,
@@ -44,6 +43,7 @@ import {
     buildConversationTitle,
     getLastUserMessageText,
     getTextFromUIMessage,
+    formatModelMessages,
 } from "../utils/chat-message.js";
 import { getWorkspaceByIdForUser } from "./workspace.services.js";
 import { addMemoriesFromMessages, searchUserMemories } from "../lib/mem0.js";
@@ -311,10 +311,11 @@ export async function streamWorkspaceChat(
             }
 
             try {
+                const modelMessages = formatModelMessages(contextMessages);
                 const result = streamText({
                     model: modelInstance,
                     system: systemPrompt,
-                    messages: await convertToModelMessages(contextMessages),
+                    messages: modelMessages,
                     tools,
                     stopWhen: webSearchEnabled ? isStepCount(3) : undefined,
                 });

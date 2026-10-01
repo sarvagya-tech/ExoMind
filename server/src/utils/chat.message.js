@@ -36,3 +36,30 @@ export function buildConversationTitle(text) {
         ? `${normalized.slice(0, 72).trim()}…`
         : normalized;
 }
+
+export function formatModelMessages(messages) {
+    if (!Array.isArray(messages)) return [];
+    return messages
+        .filter((m) => m && (m.content || m.text || (Array.isArray(m.parts) && m.parts.length > 0)))
+        .map((m) => {
+            const role = m.role?.toLowerCase() === "assistant" ? "assistant" : "user";
+            let content = "";
+            if (typeof m.content === "string") {
+                content = m.content;
+            } else if (typeof m.text === "string") {
+                content = m.text;
+            } else if (Array.isArray(m.parts)) {
+                content = m.parts
+                    .filter((p) => p.type === "text" && typeof p.text === "string")
+                    .map((p) => p.text)
+                    .join("\n");
+            } else if (m.content && typeof m.content === "object") {
+                content = JSON.stringify(m.content);
+            }
+            return {
+                role,
+                content: content.trim(),
+            };
+        })
+        .filter((m) => m.content.length > 0);
+}

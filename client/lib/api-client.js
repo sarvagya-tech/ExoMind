@@ -688,8 +688,9 @@ export const chatApi = {
               const dataStr = trimmed.slice(6);
               try {
                 const parsed = JSON.parse(dataStr);
-                if (parsed.type === "text-delta" && parsed.textDelta) {
-                  fullText += parsed.textDelta;
+                if (parsed.type === "text-delta") {
+                  const delta = parsed.delta ?? parsed.textDelta ?? parsed.text ?? "";
+                  fullText += delta;
                 } else if (typeof parsed === "string") {
                   fullText += parsed;
                 }
@@ -710,7 +711,7 @@ export const chatApi = {
           onChunk?.(fullText);
         }
 
-        const newConvId = res.headers.get("x-conversation-id");
+        const newConvId = res.headers.get("x-conversation-id") || res.headers.get("X-Conversation-Id");
         onDone?.(fullText, [], newConvId);
         return;
       }

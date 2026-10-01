@@ -45,9 +45,16 @@ export function useDeleteConversation(workspaceId) {
   });
 }
 
-export function useChatStream({ workspaceId, conversationId, selectedSourceIds, model = "gpt-4o-mini", webSearch = false }) {
+export function useChatStream({
+  workspaceId,
+  conversationId,
+  selectedSourceIds,
+  model = "gemini-3.5-flash",
+  webSearch = false,
+  onConversationCreated,
+}) {
   const queryClient = useQueryClient();
-  const [isStreaming, setIsStreaming] = ReactStateStream();
+  const [isStreaming, setIsStreaming] = useState(false);
   const [streamedText, setStreamedText] = useState("");
   const [streamCitations, setStreamCitations] = useState([]);
 
@@ -79,11 +86,32 @@ export function useChatStream({ workspaceId, conversationId, selectedSourceIds, 
             setStreamedText(text);
           },
           onDone: (finalText, citations, newConvId) => {
+            const activeConvId = newConvId || conversationId;
+
+            // Optimistically update messages in cache
+            if (activeConvId && finalText) {
+              queryClient.setQueryData(chatKeys.messages(workspaceId, activeConvId), (old = []) => [
+                ...old.filter((m) => m.id !== newUserMessage.id),
+                newUserMessage,
+                {
+                  id: `msg-${Date.now()}-assistant`,
+                  conversationId: activeConvId,
+                  role: "ASSISTANT",
+                  content: finalText,
+                  citations: Array.isArray(citations) ? citations : [],
+                  createdAt: new Date().toISOString(),
+                },
+              ]);
+            }
+
             setStreamedText("");
             setStreamCitations([]);
             setIsStreaming(false);
 
-            const activeConvId = newConvId || conversationId;
+            if (newConvId && onConversationCreated) {
+              onConversationCreated(newConvId);
+            }
+
             queryClient.invalidateQueries({ queryKey: chatKeys.messages(workspaceId, activeConvId) });
             queryClient.invalidateQueries({ queryKey: chatKeys.conversations(workspaceId) });
           },
@@ -97,7 +125,7 @@ export function useChatStream({ workspaceId, conversationId, selectedSourceIds, 
         setIsStreaming(false);
       }
     },
-    [workspaceId, conversationId, selectedSourceIds, model, webSearch, isStreaming, queryClient]
+    [workspaceId, conversationId, selectedSourceIds, model, webSearch, isStreaming, queryClient, onConversationCreated]
   );
 
   return {
@@ -106,8 +134,4 @@ export function useChatStream({ workspaceId, conversationId, selectedSourceIds, 
     streamedText,
     streamCitations,
   };
-}
-
-function ReactStateStream() {
-  return useState(false);
 }

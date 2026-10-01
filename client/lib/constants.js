@@ -1,27 +1,27 @@
 export const AI_MODELS = [
   {
+    id: "gemini-3.5-flash",
+    name: "Gemini 3.5 Flash",
+    description: "Ultra-fast multimodal reasoning grounded in sources",
+    badge: "Default",
+  },
+  {
+    id: "gemini-pro-latest",
+    name: "Gemini Pro",
+    description: "Deep analytical reasoning and complex synthesis",
+    badge: "Google",
+  },
+  {
     id: "gpt-4o-mini",
     name: "GPT-4o Mini",
     description: "Fast, intelligent and cost-effective",
-    badge: "Default",
+    badge: "OpenAI",
   },
   {
     id: "gpt-4o",
     name: "GPT-4o",
-    description: "Most capable model for deep reasoning & multimodal tasks",
+    description: "Most capable model for deep reasoning",
     badge: "Pro",
-  },
-  {
-    id: "claude-3-5-sonnet",
-    name: "Claude 3.5 Sonnet",
-    description: "Excellent coding and analytical capabilities",
-    badge: "Anthropic",
-  },
-  {
-    id: "gemini-1.5-pro",
-    name: "Gemini 1.5 Pro",
-    description: "Massive context window for extensive document analysis",
-    badge: "Google",
   },
 ];
 
