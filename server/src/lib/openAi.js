@@ -17,9 +17,15 @@ export function getChatLanguageModel(modelName) {
 
     if (geminiKey) {
         const googleProvider = createGoogleGenerativeAI({ apiKey: geminiKey });
-        let target = "gemini-2.0-flash";
-        if (modelName === "gemini-1.5-pro" || modelName === "gpt-4o") {
-            target = "gemini-1.5-pro";
+        let target = "gemini-3.5-flash";
+        if (
+            modelName === "gemini-1.5-pro" ||
+            modelName === "gemini-2.5-pro" ||
+            modelName === "gemini-3.1-pro" ||
+            modelName === "gemini-pro" ||
+            modelName === "gpt-4o"
+        ) {
+            target = "gemini-pro-latest";
         }
         return googleProvider(target);
     }
@@ -38,7 +44,7 @@ export function getChatLanguageModel(modelName) {
 
 /**
  * Generates vector embeddings for an array of texts.
- * Uses Gemini (text-embedding-004) or OpenAI (text-embedding-3-small).
+ * Uses Gemini (gemini-embedding-001) or OpenAI (text-embedding-3-small).
  */
 export async function embedTexts(texts) {
     if (!texts || texts.length === 0) {
@@ -55,7 +61,7 @@ export async function embedTexts(texts) {
     if (geminiKey) {
         try {
             const genAI = new GoogleGenerativeAI(geminiKey);
-            const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+            const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
             const embeddings = [];
 
             for (const text of texts) {

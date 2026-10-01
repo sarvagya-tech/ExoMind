@@ -93,24 +93,47 @@ function scorePassage(passage, query, queryTokens, normalizedQueryTokens) {
     let score = 0;
     const lower = passage.toLowerCase();
     const cleanQuery = query.toLowerCase().trim();
+    const lines = passage.split("\n").map((l) => l.trim()).filter(Boolean);
 
-    // 1. Exact query phrase match
-    if (cleanQuery.length > 5 && lower.includes(cleanQuery)) {
-        score += 35;
+    // 1. Heavily penalize blocks that are lists of exam/PYQ questions
+    const questionActionCount = lines.filter((l) =>
+        /^(?:\d+[\.\)]|\([a-z0-9]+\))\s*(?:define|demonstrate|describe|list out|explain|differentiate|write short|compare|what is|state the|give the)/i.test(l)
+    ).length;
+    const questionMarkCount = lines.filter((l) => l.includes("?") || /\[\d+M\]/i.test(l)).length;
+    const hasPyqTitle =
+        lower.includes("important and pyq") ||
+        lower.includes("pyq's questions") ||
+        lower.includes("pyq’s questions") ||
+        lower.includes("unit wise pyq") ||
+        lower.includes("pyq questions");
+
+    if (questionActionCount >= 2 || questionMarkCount >= 2 || hasPyqTitle) {
+        score -= 300;
     }
 
-    // 2. First line / Section title match
-    const firstLine = passage.split("\n")[0].toLowerCase();
+    // 2. Exact query phrase match
+    if (cleanQuery.length > 5 && lower.includes(cleanQuery)) {
+        score += 50;
+    }
+
+    // 3. Section title / First line match
+    const firstLine = lines[0]?.toLowerCase() || "";
     for (let i = 0; i < queryTokens.length; i++) {
         const raw = queryTokens[i];
         const norm = normalizedQueryTokens[i];
 
         if (firstLine.includes(raw) || firstLine.includes(norm)) {
-            score += 15;
+            score += 40;
         }
     }
 
-    // 3. Keyword matching and density
+    // 4. Structured definition & numbered concept pattern bonus
+    const hasStructuredDefinitions = lines.some((l) => /^[●\-\*]|\d+\.\s+[A-Z][A-Za-z0-9\s\(\)\-\/]+:/.test(l));
+    if (hasStructuredDefinitions) {
+        score += 25;
+    }
+
+    // 5. Keyword matching and density
     let matchedTokenCount = 0;
     for (let i = 0; i < queryTokens.length; i++) {
         const raw = queryTokens[i];
@@ -119,17 +142,17 @@ function scorePassage(passage, query, queryTokens, normalizedQueryTokens) {
         const rawRegex = new RegExp(`\\b${raw}\\b`, "gi");
         const rawMatches = lower.match(rawRegex);
         if (rawMatches) {
-            score += Math.min(rawMatches.length * 2.5, 12);
+            score += Math.min(rawMatches.length * 3, 15);
             matchedTokenCount++;
         } else if (norm && lower.includes(norm)) {
-            score += 2;
+            score += 4;
             matchedTokenCount++;
         }
     }
 
     // Boost if all major query tokens appear in the passage
     if (queryTokens.length > 1 && matchedTokenCount >= queryTokens.length) {
-        score += 20;
+        score += 30;
     }
 
     return score;
@@ -198,12 +221,12 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
         console.warn("[RAG] Pinecone vector search warning:", err.message);
     }
 
-    // 2. High-precision semantic text search across workspace sources
+    // 2. High-precision semantic text search across workspace sources & database chunks
     const semanticChunks = [];
     try {
         const allSources = await findSourcesByWorkspaceId(workspaceId);
         const readySources = allSources.filter(
-            (s) => s.status === "READY" && s.content && s.content.trim().length > 0,
+            (s) => s.status === "READY" && (s.content && s.content.trim().length > 0),
         );
 
         const targetSources = sourceIds?.length
@@ -225,23 +248,26 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
         const normalizedQueryTokens = queryTokens.map(normalizeWord);
 
         for (const source of effectiveSources) {
-            const passages = extractCleanSemanticPassages(source.content);
+            // Extract semantic passages from full source content
+            if (source.content) {
+                const passages = extractCleanSemanticPassages(source.content);
 
-            passages.forEach((passage, idx) => {
-                const score = scorePassage(passage, query, queryTokens, normalizedQueryTokens);
-                if (score > 0 || effectiveSources.length === 1) {
-                    semanticChunks.push({
-                        sourceId: source.id,
-                        sourceTitle: source.title,
-                        sourceType: source.type,
-                        chunkId: `${source.id}-${idx}`,
-                        chunkIndex: idx,
-                        text: passage,
-                        score: score || 1,
-                        passagesRef: passages,
-                    });
-                }
-            });
+                passages.forEach((passage, idx) => {
+                    const score = scorePassage(passage, query, queryTokens, normalizedQueryTokens);
+                    if (score > 0 || effectiveSources.length === 1) {
+                        semanticChunks.push({
+                            sourceId: source.id,
+                            sourceTitle: source.title,
+                            sourceType: source.type,
+                            chunkId: `${source.id}-${idx}`,
+                            chunkIndex: idx,
+                            text: passage,
+                            score: score || 1,
+                            passagesRef: passages,
+                        });
+                    }
+                });
+            }
         }
 
         semanticChunks.sort((a, b) => b.score - a.score);
@@ -254,12 +280,12 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
     const seenTexts = new Set();
 
     // Prefer high scoring semantic matches
-    for (const chunk of semanticChunks.slice(0, 6)) {
+    for (const chunk of semanticChunks.slice(0, 8)) {
         const key = chunk.text.slice(0, 100);
         if (!seenTexts.has(key)) {
             seenTexts.add(key);
 
-            // If this passage has a subsequent continuation block, include it for full completeness
+            // If this passage has a subsequent continuation block, include it for completeness
             if (chunk.passagesRef && chunk.passagesRef[chunk.chunkIndex + 1] && chunk.score > 20) {
                 const nextPassage = chunk.passagesRef[chunk.chunkIndex + 1];
                 if (nextPassage && !nextPassage.toLowerCase().startsWith("unit ")) {
@@ -273,6 +299,7 @@ export async function retrieveWorkspaceContext(workspaceIdOrObj, maybeQuery) {
                 sourceType: chunk.sourceType,
                 chunkId: chunk.chunkId,
                 chunkIndex: chunk.chunkIndex,
+                page: chunk.page,
                 text: chunk.text,
                 score: chunk.score,
             });
@@ -309,33 +336,39 @@ export function synthesizeFallbackGroundedAnswer(query, chunks) {
     const lines = primaryChunk.text
         .split("\n")
         .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith("## Page") && !l.startsWith("By ") && !l.includes("Downloaded from"));
+        .filter((l) => l && !l.startsWith("## Page") && !l.startsWith("By ") && !l.includes("Downloaded from") && !l.startsWith("Made by"));
 
     // Extract section heading
     let title = "Grounded Knowledge Overview";
     const headerLine = lines.find((l) => /^(?:[0-9]+\.\s+|Unit\s*\d+:?\s*)?[A-Z][A-Za-z0-9\s,\-\/]+:?$/.test(l));
     if (headerLine) {
         title = headerLine.replace(/^#+\s*/, "").replace(/^Unit\s*\d+:?\s*/i, "").replace(/:$/, "").trim();
+    } else {
+        const qTitle = query.replace(/^(what is|teach me|explain|describe|tell me about)\s+/i, "").trim();
+        if (qTitle.length > 2) {
+            title = qTitle.charAt(0).toUpperCase() + qTitle.slice(1);
+        }
     }
 
     const formattedPoints = [];
     for (const line of lines) {
         if (line === headerLine) continue;
 
-        // Numbered or bulleted point: "1. Distributed Computing (1950s): Early computing..."
+        // Numbered point: "1. Distributed Computing (1950s): Early computing..."
         const stageMatch = line.match(/^([0-9]+\.\s+[A-Z][A-Za-z0-9\s\(\)\-\/]+):\s*(.+)$/);
         if (stageMatch) {
-            formattedPoints.push(`### ${stageMatch[1]}\n${stageMatch[2]} [1]\n`);
+            formattedPoints.push(`### ${stageMatch[1]}\n${stageMatch[2]} [1]`);
             continue;
         }
 
+        // Bullet point: "● Mainframe Computing: Many users accessed..."
         const bulletMatch = line.match(/^[●\-\*]\s*([A-Z][A-Za-z0-9\s\(\)\-\/]+):\s*(.+)$/);
         if (bulletMatch) {
             formattedPoints.push(`- **${bulletMatch[1]}**: ${bulletMatch[2]} [1]`);
             continue;
         }
 
-        if (line.length > 25 && !line.startsWith("Downloaded from")) {
+        if (line.length > 30 && !line.startsWith("Downloaded from")) {
             formattedPoints.push(`${line} [1]`);
         }
     }

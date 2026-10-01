@@ -286,19 +286,13 @@ export async function streamWorkspaceChat(
                     retrievedChunks,
                 );
 
-                const fullAnswer = [
-                    synthesizedAnswer,
-                    "",
-                    "> 💡 *Tip: Add `GEMINI_API_KEY` to `server/.env` to enable real-time Gemini 2.0 Flash reasoning.*",
-                ].join("\n");
-
                 const textPartId = `text-${Date.now()}`;
                 writer.write({
                     type: "text-start",
                     id: textPartId,
                 });
 
-                const words = fullAnswer.split(" ");
+                const words = synthesizedAnswer.split(" ");
                 for (let i = 0; i < words.length; i += 3) {
                     const chunk = words.slice(i, i + 3).join(" ") + (i + 3 < words.length ? " " : "");
                     writer.write({
@@ -316,15 +310,45 @@ export async function streamWorkspaceChat(
                 return;
             }
 
-            const result = streamText({
-                model: modelInstance,
-                system: systemPrompt,
-                messages: await convertToModelMessages(contextMessages),
-                tools,
-                stopWhen: webSearchEnabled ? isStepCount(3) : undefined,
-            });
+            try {
+                const result = streamText({
+                    model: modelInstance,
+                    system: systemPrompt,
+                    messages: await convertToModelMessages(contextMessages),
+                    tools,
+                    stopWhen: webSearchEnabled ? isStepCount(3) : undefined,
+                });
 
-            writer.merge(toUIMessageStream({ stream: result.stream }));
+                writer.merge(toUIMessageStream({ stream: result.stream }));
+            } catch (streamErr) {
+                console.warn("[Chat] streamText error, falling back to grounded answer:", streamErr.message);
+                const synthesizedAnswer = synthesizeFallbackGroundedAnswer(
+                    userText,
+                    retrievedChunks,
+                );
+
+                const textPartId = `text-${Date.now()}`;
+                writer.write({
+                    type: "text-start",
+                    id: textPartId,
+                });
+
+                const words = synthesizedAnswer.split(" ");
+                for (let i = 0; i < words.length; i += 3) {
+                    const chunk = words.slice(i, i + 3).join(" ") + (i + 3 < words.length ? " " : "");
+                    writer.write({
+                        type: "text-delta",
+                        id: textPartId,
+                        textDelta: chunk,
+                    });
+                    await new Promise((r) => setTimeout(r, 15));
+                }
+
+                writer.write({
+                    type: "text-end",
+                    id: textPartId,
+                });
+            }
         },
         onFinish: async ({ responseMessage, isAborted }) => {
             if (isAborted) {
