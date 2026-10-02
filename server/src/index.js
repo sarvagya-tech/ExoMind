@@ -32,11 +32,12 @@ import http from "http";
 app.all("/api/auth/*any", toNodeHandler(auth));
 app.use("/api/auth", toNodeHandler(auth));
 
-// Mount express json middleware after Better Auth handler
-// or only apply it to routes that don't interact with Better Auth
-app.use(express.json());
+// Mount express json middleware with large payload limit for Inngest step data & large sources
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.use("/api/inngest", serve({ client: inngest, functions }));
+
 
 // Register application routes
 registerRoutes(app);

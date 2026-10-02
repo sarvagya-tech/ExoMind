@@ -1,3 +1,14 @@
+export const APP_CONFIG = {
+  name: "NotebookLM",
+  brandPrefix: "Notebook",
+  brandSuffix: "LM",
+  badge: "Studio",
+  tagline: "Your Personal AI Knowledge Workspace",
+  headline: "Your sources. One intelligent workspace.",
+  subheadline: "Bring together PDFs, websites, YouTube videos, and notes. Ask questions, explore ideas, and turn information into knowledge you can use.",
+  microcopy: "From scattered sources to clearer understanding.",
+};
+
 export const AI_MODELS = [
   {
     id: "gemini-3.5-flash",

@@ -16,8 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "NotebookLM - AI Research Studio",
-  description: "Source-grounded research workspaces, grounded citations, and study studio.",
+  title: "NotebookLM Studio - Personal AI Knowledge Workspace",
+  description:
+    "Bring together PDFs, websites, YouTube videos, and notes. Ask questions, explore ideas, and turn information into knowledge you can use with source-grounded AI.",
 };
 
 import { AuthGuard } from "@/components/auth/auth-guard";

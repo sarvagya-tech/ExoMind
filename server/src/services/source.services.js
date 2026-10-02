@@ -15,6 +15,7 @@ import {
     embedAndIndexSource,
     removeSourceFromIndex,
 } from "./source-processing.services.js";
+import { enqueueSourceProcessing } from "../lib/source-events.js";
 import { NotFoundError } from "../utils/app.error.js";
 import { getWorkspaceByIdForUser } from "./workspace.services.js";
 
@@ -30,10 +31,12 @@ async function autoIndexSource(source, text, pages) {
     try {
         const chunks = await chunkSourceContent(source.id, text, pages);
         await embedAndIndexSource(source, chunks);
+        console.log(`[Pinecone/Chunking] Successfully indexed ${chunks.length} chunks for source ${source.id}`);
     } catch (err) {
         console.warn(`[Pinecone/Chunking] Auto-indexing warning for source ${source.id}:`, err.message);
     }
 }
+
 
 const listSourcesForWorkspace = async (workspaceId, userId, filters) => {
     await assertsWorkspaceAccess(workspaceId, userId);
@@ -110,6 +113,7 @@ const createTextOrMarkdownSource = async (workspaceId, userId, data) => {
     if (data.content) {
         void autoIndexSource(source, data.content);
     }
+    void enqueueSourceProcessing(source.id, workspaceId);
 
     return source;
 };
@@ -139,6 +143,7 @@ const importWebsiteSource = async (workspaceId, userId, data) => {
     if (content) {
         void autoIndexSource(websiteSource, content);
     }
+    void enqueueSourceProcessing(websiteSource.id, workspaceId);
 
     return websiteSource;
 };
@@ -185,6 +190,7 @@ const uploadPdfSource = async (workspaceId, userId, file, title) => {
             fileSize: file.size || file.buffer?.length,
             publicId,
             pageCount,
+            resourceType: "raw",
         },
     });
 
@@ -192,6 +198,7 @@ const uploadPdfSource = async (workspaceId, userId, file, title) => {
     if (extractedText) {
         void autoIndexSource(pdfSource, extractedText, pages);
     }
+    void enqueueSourceProcessing(pdfSource.id, workspaceId);
 
     return pdfSource;
 };
@@ -220,9 +227,11 @@ const importYoutubeSource = async (workspaceId, userId, input) => {
     if (content) {
         void autoIndexSource(source, content);
     }
+    void enqueueSourceProcessing(source.id, workspaceId);
 
     return source;
 };
+
 
 export {
     importYoutubeSource,

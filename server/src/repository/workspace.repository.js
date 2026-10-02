@@ -11,9 +11,8 @@ export const workspaceSelect = {
 };
 
 const normalizeUserId = (userId) => {
-    if (typeof userId === "number") return userId;
-    const parsed = parseInt(userId, 10);
-    return isNaN(parsed) ? 1 : parsed;
+    if (!userId) return "";
+    return String(userId);
 };
 
 export function findWorkspacesByUserId(userId) {

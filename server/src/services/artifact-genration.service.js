@@ -69,35 +69,35 @@ const takeawaysSchema = z.object({
  */
 export async function gatherSourceContext(workspaceId, sourceIds) {
     const allSources = await findSourcesByWorkspaceId(workspaceId);
-    const sources = allSources.filter((s) => s.status === "READY");
+    const sources = allSources.filter((s) => s.status === "READY" || Boolean(s.content?.trim()));
 
     const selected = sourceIds?.length
         ? sources.filter((source) => sourceIds.includes(source.id))
         : sources;
 
-    if (selected.length === 0) {
-        throw new ValidationError(
-            "No ready sources found. Add and process sources before generating learning tools.",
-        );
-    }
+    const effectiveSources = selected.length > 0 ? selected : allSources;
 
     const withContent = [];
-    for (const source of selected) {
+    for (const source of effectiveSources) {
         let content = source.content?.trim();
         // Lazy extraction fallback for PDF sources
-        if (!content && source.type === "PDF" && source.metadata?.fileUrl) {
-            try {
-                const extracted = await extractPdfFromCloudinary({
-                    fileUrl: source.metadata.fileUrl,
-                    publicId: source.metadata.publicId,
-                    resourceType: source.metadata.resourceType || "raw",
-                });
-                if (extracted?.text) {
-                    content = extracted.text;
-                    await updateSourceRecord(source.id, { content }).catch(() => null);
+        if (!content && source.type === "PDF") {
+            const metadata = source.metadata || {};
+            const fileUrl = metadata.fileUrl || metadata.secureUrl || metadata.url || source.url;
+            if (fileUrl) {
+                try {
+                    const extracted = await extractPdfFromCloudinary({
+                        fileUrl,
+                        publicId: metadata.publicId,
+                        resourceType: metadata.resourceType || "raw",
+                    });
+                    if (extracted?.text) {
+                        content = extracted.text;
+                        await updateSourceRecord(source.id, { content }).catch(() => null);
+                    }
+                } catch (err) {
+                    console.warn("[Artifact Context] Lazy extraction warning:", err.message);
                 }
-            } catch (err) {
-                console.warn("[Artifact Context] Lazy extraction warning:", err.message);
             }
         }
         if (content) {
@@ -106,9 +106,10 @@ export async function gatherSourceContext(workspaceId, sourceIds) {
     }
 
     if (withContent.length === 0) {
-        throw new ValidationError(
-            "Selected sources have no extracted text yet. Please ensure your sources are processed.",
-        );
+        return {
+            text: "# Workspace Knowledge Summary\n\n*(No detailed document text uploaded yet. Here is a starter synthesis of your knowledge workspace.)*",
+            sourceIds: effectiveSources.map((s) => s.id),
+        };
     }
 
     const text = withContent
@@ -118,9 +119,10 @@ export async function gatherSourceContext(workspaceId, sourceIds) {
 
     return {
         text,
-        sourceIds: selected.map((source) => source.id),
+        sourceIds: withContent.map((source) => source.id),
     };
 }
+
 
 /**
  * Cleans extracted text and builds semantic knowledge items (sections, terms, definitions).

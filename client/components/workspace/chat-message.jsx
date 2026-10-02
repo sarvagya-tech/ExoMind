@@ -20,8 +20,8 @@ export function ChatMessage({ message, onCitationClick }) {
     typeof message.content === "string"
       ? message.content
       : message.content
-      ? JSON.stringify(message.content)
-      : "";
+        ? JSON.stringify(message.content)
+        : "";
 
   const citationsList = React.useMemo(() => {
     if (Array.isArray(message.citations)) return message.citations;
@@ -56,9 +56,8 @@ export function ChatMessage({ message, onCitationClick }) {
 
   return (
     <div
-      className={`flex w-full gap-3 py-2 transition-colors ${
-        isUser ? "justify-end" : "justify-start"
-      }`}
+      className={`flex w-full gap-3 py-2 transition-colors ${isUser ? "justify-end" : "justify-start"
+        }`}
     >
       {/* Assistant Avatar */}
       {!isUser && (
@@ -69,11 +68,10 @@ export function ChatMessage({ message, onCitationClick }) {
 
       {/* Message Content Container */}
       <div
-        className={`group relative max-w-[88%] text-sm leading-relaxed ${
-          isUser
+        className={`group relative max-w-[88%] text-sm leading-relaxed ${isUser
             ? "bg-muted text-foreground px-4 py-2.5 rounded-3xl"
             : "flex-1 px-1 py-1 text-foreground"
-        }`}
+          }`}
       >
         {/* Text */}
         {isUser ? (

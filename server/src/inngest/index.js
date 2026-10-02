@@ -37,20 +37,28 @@ export const processSource = inngest.createFunction(
 
         try {
             // Step 2: Extract content
-            const extracted = await step.run(
+            await step.run(
                 "extract-content",
-                () => extractSourceContent(sourceId)
+                async () => {
+                    const extracted = await extractSourceContent(sourceId);
+                    return {
+                        sourceId,
+                        charCount: extracted.text?.length || 0,
+                        pageCount: extracted.pageCount || 1,
+                    };
+                }
             );
 
             // Step 3: Create chunks
             await step.run(
                 "chunk-content",
-                () =>
-                    chunkSourceContent(
+                async () => {
+                    const chunks = await chunkSourceContent(sourceId);
+                    return {
                         sourceId,
-                        extracted.text,
-                        extracted.pages
-                    )
+                        chunkCount: chunks.length,
+                    };
+                }
             );
 
             // Step 4: Generate embeddings and store in Pinecone
@@ -59,6 +67,7 @@ export const processSource = inngest.createFunction(
                 async () => {
                     const source =
                         await findSourceById(sourceId);
+
 
                     if (!source) {
                         throw new Error(

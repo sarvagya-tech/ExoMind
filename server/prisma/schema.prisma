@@ -110,7 +110,7 @@ enum SourceStatus {
 }
 
 model Source {
-  id          String       @id @default(cuid())
+  id          String        @id @default(cuid())
   title       String
   content     String?
   workspaceId String
@@ -118,14 +118,30 @@ model Source {
   status      SourceStatus
   url         String?
   metadata    Json?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  chunks      SourceChunk[]
 
   @@index([workspaceId])
   @@index([workspaceId, type])
   @@index([workspaceId, status])
   @@map("source")
+}
+
+model SourceChunk {
+  id         String   @id @default(cuid())
+  sourceId   String
+  index      Int
+  content    String
+  tokenCount Int?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@index([sourceId, index])
+  @@map("source_chunk")
 }
 
 enum MessageRole {

@@ -132,9 +132,8 @@ export function ChatPanel({
                 <DropdownMenuItem
                   key={conv.id}
                   onClick={() => setSelectedConvId(conv.id)}
-                  className={`flex items-center justify-between text-xs cursor-pointer ${
-                    conv.id === activeConvId ? "bg-muted font-semibold" : ""
-                  }`}
+                  className={`flex items-center justify-between text-xs cursor-pointer ${conv.id === activeConvId ? "bg-muted font-semibold" : ""
+                    }`}
                 >
                   <span className="truncate flex-1">{conv.title || "Untitled Chat"}</span>
                   <button
@@ -177,11 +176,10 @@ export function ChatPanel({
           <button
             type="button"
             onClick={() => setWebSearch(!webSearch)}
-            className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
-              webSearch
+            className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all ${webSearch
                 ? "bg-primary text-primary-foreground shadow-2xs"
                 : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
-            }`}
+              }`}
             title="Web search"
           >
             <Globe className="h-3 w-3" />

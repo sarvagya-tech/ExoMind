@@ -11,9 +11,13 @@ import { inngest } from "../inngest/client.js";
  * @returns Resolves when the event is accepted by Inngest
  *
  */
-export async function enqueueSourceProcessing( sourceId, workspaceId) {
-    await inngest.send({
-        name: "source/created",
-        data: input,
-    });
-}
+export async function enqueueSourceProcessing(sourceId, workspaceId) {
+    try {
+        await inngest.send({
+            name: "source/created",
+            data: { sourceId, workspaceId },
+        });
+    } catch (err) {
+        console.warn("[Inngest] Could not enqueue source processing:", err.message);
+    }
+}

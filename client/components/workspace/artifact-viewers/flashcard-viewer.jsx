@@ -127,9 +127,8 @@ export function FlashcardViewer({ artifact }) {
         onClick={() => setIsFlipped(!isFlipped)}
       >
         <div
-          className={`relative w-full h-full rounded-2xl border border-border bg-card p-6 shadow-md transition-transform duration-500 transform-style-3d flex flex-col justify-between ${
-            isFlipped ? "rotate-y-180 bg-muted/30" : "hover:border-purple-500/50"
-          }`}
+          className={`relative w-full h-full rounded-2xl border border-border bg-card p-6 shadow-md transition-transform duration-500 transform-style-3d flex flex-col justify-between ${isFlipped ? "rotate-y-180 bg-muted/30" : "hover:border-purple-500/50"
+            }`}
         >
           {/* Front Side */}
           <div className="flex flex-col justify-between h-full backface-hidden">
@@ -215,11 +214,10 @@ export function FlashcardViewer({ artifact }) {
             variant={isMastered ? "secondary" : "outline"}
             size="sm"
             onClick={toggleMastery}
-            className={`gap-1.5 text-xs h-8 ${
-              isMastered
+            className={`gap-1.5 text-xs h-8 ${isMastered
                 ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
                 : ""
-            }`}
+              }`}
           >
             <CheckCircle className="h-3.5 w-3.5" />
             <span>{isMastered ? "Mastered" : "Mark Mastered"}</span>

@@ -62,9 +62,12 @@ export function AddSourceDialog({ workspaceId, open, onOpenChange }) {
     importYoutube.isPending ||
     createTextSource.isPending;
 
+  const [errorMessage, setErrorMessage] = React.useState("");
+
   const handlePdfSubmit = (e) => {
     e.preventDefault();
     if (!pdfFile) return;
+    setErrorMessage("");
     uploadPdf.mutate(
       { file: pdfFile, title: pdfTitle.trim() },
       {
@@ -72,6 +75,10 @@ export function AddSourceDialog({ workspaceId, open, onOpenChange }) {
           onOpenChange(false);
           setPdfFile(null);
           setPdfTitle("");
+          setErrorMessage("");
+        },
+        onError: (err) => {
+          setErrorMessage(err.message || "Failed to upload and process PDF");
         },
       }
     );
@@ -80,6 +87,7 @@ export function AddSourceDialog({ workspaceId, open, onOpenChange }) {
   const handleWebSubmit = (e) => {
     e.preventDefault();
     if (!webUrl.trim()) return;
+    setErrorMessage("");
     importWebsite.mutate(
       { url: webUrl.trim(), title: webTitle.trim() },
       {
@@ -87,6 +95,10 @@ export function AddSourceDialog({ workspaceId, open, onOpenChange }) {
           onOpenChange(false);
           setWebUrl("");
           setWebTitle("");
+          setErrorMessage("");
+        },
+        onError: (err) => {
+          setErrorMessage(err.message || "Failed to scrape website");
         },
       }
     );
@@ -95,6 +107,7 @@ export function AddSourceDialog({ workspaceId, open, onOpenChange }) {
   const handleYtSubmit = (e) => {
     e.preventDefault();
     if (!ytUrl.trim()) return;
+    setErrorMessage("");
     importYoutube.mutate(
       { url: ytUrl.trim(), title: ytTitle.trim() },
       {
@@ -102,6 +115,10 @@ export function AddSourceDialog({ workspaceId, open, onOpenChange }) {
           onOpenChange(false);
           setYtUrl("");
           setYtTitle("");
+          setErrorMessage("");
+        },
+        onError: (err) => {
+          setErrorMessage(err.message || "Failed to extract YouTube transcript");
         },
       }
     );
@@ -110,6 +127,7 @@ export function AddSourceDialog({ workspaceId, open, onOpenChange }) {
   const handleTextSubmit = (e) => {
     e.preventDefault();
     if (!textContent.trim()) return;
+    setErrorMessage("");
     createTextSource.mutate(
       {
         title: textTitle.trim() || "Pasted Note",
@@ -121,13 +139,20 @@ export function AddSourceDialog({ workspaceId, open, onOpenChange }) {
           onOpenChange(false);
           setTextTitle("");
           setTextContent("");
+          setErrorMessage("");
+        },
+        onError: (err) => {
+          setErrorMessage(err.message || "Failed to create note");
         },
       }
     );
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(val) => {
+      if (!val) setErrorMessage("");
+      onOpenChange(val);
+    }}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Add Sources to Notebook</DialogTitle>
@@ -135,6 +160,13 @@ export function AddSourceDialog({ workspaceId, open, onOpenChange }) {
             Ground your AI responses and learning tools in trusted source documents.
           </DialogDescription>
         </DialogHeader>
+
+        {errorMessage && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive flex items-center gap-2 mt-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
           <TabsList className="grid grid-cols-4 w-full h-11">

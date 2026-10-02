@@ -1,16 +1,15 @@
 /** Default chat model when the client or workspace does not specify one. */
-export const CHAT_MODEL = "gemini-3.5-flash";
+export const CHAT_MODEL = "gemini-3.8-flash";
 
 /** Allowed chat models exposed to the client and workspace settings. */
 export const CHAT_MODELS = [
-    "gemini-3.5-flash",
+    "gemini-3.8-flash",
     "gemini-flash-latest",
     "gemini-pro-latest",
-    "gemini-2.0-flash",
-    "gemini-1.5-pro",
     "gpt-4o-mini",
     "gpt-4o",
 ];
+
 
 /** OpenAI / Gemini embedding model used for RAG vector indexing and query embedding. */
 export const EMBEDDING_MODEL = "text-embedding-004";

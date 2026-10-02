@@ -1,7 +1,8 @@
-
 import { chunkPages, chunkText } from "../lib/chunking.js";
 import { embedTexts } from "../lib/openAi.js";
 import { extractPdfFromCloudinary } from "../lib/pdf.js";
+import { scrapeWebsite } from "../lib/firecrawl.js";
+import { fetchYoutubeTranscript } from "../lib/youtube.js";
 
 import {
     deleteSourceVectors,
@@ -27,7 +28,7 @@ async function extractSourceText(source) {
     if (text) {
         return {
             text,
-            pageCount: undefined,
+            pageCount: source.metadata?.pageCount || undefined,
             pages: undefined,
         };
     }
@@ -41,21 +42,60 @@ async function extractSourceText(source) {
                 ? source.metadata
                 : {};
 
-        if (!metadata.fileUrl) {
-            throw new Error("PDF source is missing fileUrl metadata");
+        const fileUrl = metadata.fileUrl || metadata.secureUrl || metadata.url || source.url;
+
+        if (fileUrl) {
+            try {
+                const extracted = await extractPdfFromCloudinary({
+                    fileUrl,
+                    publicId: metadata.publicId,
+                    resourceType: metadata.resourceType ?? "raw",
+                });
+
+                return {
+                    text: extracted.text,
+                    pageCount: extracted.pageCount,
+                    pages: extracted.pages,
+                };
+            } catch (err) {
+                console.warn(`[PDF Extraction] Extraction error for source ${source.id}:`, err.message);
+            }
         }
 
-        const extracted = await extractPdfFromCloudinary({
-            fileUrl: metadata.fileUrl,
-            publicId: metadata.publicId,
-            resourceType: metadata.resourceType ?? "image",
-        });
-
         return {
-            text: extracted.text,
-            pageCount: extracted.pageCount,
-            pages: extracted.pages,
+            text: `## ${source.title || "PDF Document"}\n\n*(PDF document processed without readable text)*`,
+            pageCount: 1,
+            pages: undefined,
         };
+    }
+
+
+    // If the source is a WEBSITE
+    if (source.type === "WEBSITE" && source.url) {
+        try {
+            const scraped = await scrapeWebsite(source.url);
+            return {
+                text: scraped.markdown || "",
+                pageCount: 1,
+                pages: undefined,
+            };
+        } catch (e) {
+            console.warn("Website scrape fallback:", e.message);
+        }
+    }
+
+    // If the source is YOUTUBE
+    if (source.type === "YOUTUBE" && source.url) {
+        try {
+            const transcript = await fetchYoutubeTranscript(source.url);
+            return {
+                text: transcript.content || "",
+                pageCount: 1,
+                pages: undefined,
+            };
+        } catch (e) {
+            console.warn("YouTube transcript fallback:", e.message);
+        }
     }
 
     throw new Error(
@@ -137,9 +177,20 @@ export async function extractSourceContent(sourceId) {
 
 export async function chunkSourceContent(
     sourceId,
-    text,
-    pages
+    maybeText,
+    maybePages
 ) {
+    let text = maybeText;
+    let pages = maybePages;
+
+    if (!text) {
+        const source = await findSourceById(sourceId);
+        if (!source || !source.content) {
+            throw new Error(`Source ${sourceId} has no content to chunk`);
+        }
+        text = source.content;
+    }
+
     // Remove old chunks first.
     await deleteChunksBySourceId(sourceId);
 
@@ -154,6 +205,7 @@ export async function chunkSourceContent(
             "No chunks were generated from source content"
         );
     }
+
 
     return createSourceChunks(
         chunks.map((chunk) => ({
@@ -310,4 +362,3 @@ export async function embedAndIndexSource(
         },
     });
 }
-

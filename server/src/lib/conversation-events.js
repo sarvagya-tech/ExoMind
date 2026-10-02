@@ -5,8 +5,12 @@ export async function enqueueConversationSummarize(
     conversationId,
     userId
 ) {
-    await inngest.send({
-        name: "conversation/summarize",
-        data: input,
-    });
-}
+    try {
+        await inngest.send({
+            name: "conversation/summarize",
+            data: { conversationId, userId },
+        });
+    } catch (err) {
+        console.warn("[Inngest] Could not enqueue conversation summarize:", err.message);
+    }
+}

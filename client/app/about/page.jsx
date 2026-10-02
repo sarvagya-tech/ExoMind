@@ -23,16 +23,23 @@ import {
   Share2,
   Lock,
   ChevronDown,
+  Network,
+  RotateCw,
+  Check,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { GoogleLogo, GoogleAuthDialog } from "@/components/auth/google-auth-dialog";
+import { APP_CONFIG } from "@/lib/constants";
 
 export default function AboutLandingPage() {
   const router = useRouter();
   const [authOpen, setAuthOpen] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState("chat");
+  const [studioTab, setStudioTab] = React.useState("summaries");
   const [openFaq, setOpenFaq] = React.useState(null);
+  const [flashcardFlipped, setFlashcardFlipped] = React.useState(false);
+  const [selectedQuizOption, setSelectedQuizOption] = React.useState(1);
 
   const toggleFaq = (idx) => {
     setOpenFaq(openFaq === idx ? null : idx);
@@ -44,24 +51,24 @@ export default function AboutLandingPage() {
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto flex h-16 items-center justify-between px-4 sm:px-8">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
+          <Link href="/" className="flex items-center gap-2.5 group" aria-label={`${APP_CONFIG.name} Home`}>
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs group-hover:scale-105 transition-transform">
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-1.5">
               <span className="font-bold tracking-tight text-base sm:text-lg">
-                Notebook<span className="text-primary">LM</span>
+                {APP_CONFIG.brandPrefix}<span className="text-primary">{APP_CONFIG.brandSuffix}</span>
               </span>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary border border-primary/20">
-                Studio
+                {APP_CONFIG.badge}
               </span>
             </div>
           </Link>
 
-          {/* Center Links */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-muted-foreground">
+          {/* Center Navigation Links */}
+          <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-muted-foreground" aria-label="Main Navigation">
             <a href="#features" className="hover:text-foreground transition-colors">
-              Features
+              Capabilities
             </a>
             <a href="#how-it-works" className="hover:text-foreground transition-colors">
               How It Works
@@ -104,37 +111,35 @@ export default function AboutLandingPage() {
 
       {/* 2. HERO SECTION */}
       <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-24 px-4 sm:px-8 border-b border-border/60">
-        {/* Subtle Background Glow */}
+        {/* Ambient Gradient Glow */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-4xl mx-auto text-center space-y-6 relative z-10">
-          {/* Badge */}
+          {/* Eyebrow */}
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>Grounded in Your Trusted Sources</span>
+            <span>YOUR PERSONAL AI KNOWLEDGE WORKSPACE</span>
           </div>
 
           {/* Main Headline */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground leading-[1.15]">
-            Your Personalized AI Research Assistant
+            Your sources. One intelligent workspace.
           </h1>
 
-          {/* Subtitle */}
+          {/* Supporting Text */}
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Upload PDFs, websites, YouTube lectures, and markdown notes.
-            NotebookLM indexes them with verified citations, conversational reasoning,
-            and automated learning tools like 3D flashcards and quizzes.
+            Bring together PDFs, websites, YouTube videos, and notes. Ask questions, explore ideas, and turn information into knowledge you can use.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Button
               size="lg"
               onClick={() => setAuthOpen(true)}
               className="w-full sm:w-auto h-12 px-6 gap-2.5 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md active:scale-98 transition-all"
             >
               <GoogleLogo className="h-4 w-4 bg-white rounded-full p-0.5" />
-              <span>Get Started with Google</span>
+              <span>Get Started Free</span>
             </Button>
 
             <Button
@@ -144,15 +149,14 @@ export default function AboutLandingPage() {
               className="w-full sm:w-auto h-12 px-6 gap-2 text-sm font-medium border-border hover:bg-muted"
             >
               <Play className="h-4 w-4 text-emerald-500 fill-emerald-500/20" />
-              <span>Explore Interactive Demo</span>
+              <span>Explore the Demo</span>
             </Button>
           </div>
 
-          {/* Security Assurance */}
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2">
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            <span>Private & secure. Your personal notes are never used to train public models.</span>
-          </div>
+          {/* Supporting Microcopy */}
+          <p className="text-xs text-muted-foreground pt-1">
+            From scattered sources to clearer understanding.
+          </p>
         </div>
 
         {/* 3. HERO INTERACTIVE WORKSPACE PREVIEW */}
@@ -164,27 +168,27 @@ export default function AboutLandingPage() {
               <span className="h-3 w-3 rounded-full bg-amber-500/80" />
               <span className="h-3 w-3 rounded-full bg-emerald-500/80" />
               <span className="ml-2 font-mono text-[11px] opacity-70">
-                notebooklm.google/workspace/ai-transformer-research
+                workspace/transformer-architecture-notes
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="px-2 py-0.5 rounded-md bg-muted text-[10px] font-mono">
-                GPT-4o & RAG Active
+              <span className="px-2 py-0.5 rounded-md bg-muted text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                ● RAG Context Active
               </span>
             </div>
           </div>
 
           {/* Mock Interactive Workspace Canvas */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 min-h-[380px]">
-            {/* Left Column: Sources */}
+            {/* Left Column: Sources in Workspace */}
             <div className="md:col-span-4 rounded-2xl border border-border/70 bg-muted/20 p-3 space-y-2.5 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-semibold text-foreground">
                   <span className="uppercase tracking-wider text-[10px] text-muted-foreground">
-                    Grounded Sources (4)
+                    Sources in Workspace (4)
                   </span>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
-                    ✓ 100% Indexed
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    Ready
                   </span>
                 </div>
 
@@ -195,18 +199,22 @@ export default function AboutLandingPage() {
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded-xl bg-card border border-border/80">
                     <Globe className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                    <span className="truncate font-medium text-[11px]">arxiv.org/abs/2402.rag-study</span>
+                    <span className="truncate font-medium text-[11px]">arxiv.org/abs/1706.03762</span>
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded-xl bg-card border border-border/80">
                     <Video className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                    <span className="truncate font-medium text-[11px]">State of AI 2025 Keynote</span>
+                    <span className="truncate font-medium text-[11px]">Transformer Keynote Breakdown</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-card border border-border/80">
+                    <FileCode className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                    <span className="truncate font-medium text-[11px]">Research Notes on Multi-Head Attention</span>
                   </div>
                 </div>
               </div>
 
               <div className="p-2.5 rounded-xl border border-dashed border-border text-center text-[11px] text-muted-foreground">
                 <Plus className="h-3.5 w-3.5 mx-auto mb-1 text-primary" />
-                <span>Drop any research PDF or URL</span>
+                <span>Upload PDF, web article, YouTube URL, or notes</span>
               </div>
             </div>
 
@@ -216,7 +224,7 @@ export default function AboutLandingPage() {
                 {/* User Message */}
                 <div className="flex justify-end">
                   <div className="rounded-2xl bg-muted px-3.5 py-2 text-foreground font-medium max-w-[85%]">
-                    How do self-attention mechanisms replace recurrence in transformers?
+                    How do self-attention mechanisms compare to recurrence in sequence models?
                   </div>
                 </div>
 
@@ -227,21 +235,21 @@ export default function AboutLandingPage() {
                   </div>
                   <div className="space-y-2 flex-1">
                     <p className="text-foreground leading-relaxed">
-                      Transformers discard recurrence entirely and compute attention across all token pairs simultaneously in parallel.
+                      Unlike sequential recurrent layers that process tokens one by one, self-attention computes relationship scores across all token pairs in parallel. This allows direct information flow regardless of sequence distance and significantly improves parallelization during training.
                     </p>
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground font-mono">
-                        <span className="text-primary font-bold">[1]</span> Attention Is All You Need, p. 4
+                        <span className="text-primary font-bold">[1]</span> Attention Is All You Need — Section 3.2
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground font-mono">
-                        <span className="text-primary font-bold">[2]</span> RAG vs Long-Context Study
+                        <span className="text-primary font-bold">[2]</span> Research Notes — Multi-Head Projections
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Seamless Unboxed Input Mock */}
+              {/* Input Mock */}
               <div className="pt-2 border-t border-border/60 flex items-center gap-2">
                 <input
                   type="text"
@@ -249,7 +257,7 @@ export default function AboutLandingPage() {
                   readOnly
                   className="flex-1 bg-transparent text-xs outline-none text-muted-foreground"
                 />
-                <Button size="sm" className="h-8 w-8 p-0 rounded-full bg-primary text-primary-foreground">
+                <Button size="sm" className="h-8 w-8 p-0 rounded-full bg-primary text-primary-foreground" aria-label="Send Query">
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -258,188 +266,409 @@ export default function AboutLandingPage() {
         </div>
       </section>
 
-      {/* 4. CORE FEATURES SECTION */}
+      {/* 4. CAPABILITIES (FEATURES) SECTION */}
       <section id="features" className="py-20 px-4 sm:px-8 max-w-6xl mx-auto w-full space-y-12">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Key Capabilities
+            CAPABILITIES
           </span>
           <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">
-            Everything You Need for Deep Research
+            Everything you need to make sense of information.
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Built from the ground up to prevent hallucinations and turn complex information into actionable knowledge.
+            Bring your research together, explore it with AI, and turn what you learn into something useful.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Feature 1 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Feature 1: Multi-Source Knowledge */}
           <div className="rounded-3xl border border-border bg-card p-6 space-y-3 hover:border-primary/40 transition-all">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
               <FileText className="h-5 w-5" />
             </div>
             <h3 className="text-base font-bold text-foreground">
-              Multi-Source Grounding
+              Bring all your sources together
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Ingest academic PDFs, Firecrawl website articles, YouTube transcripts, and raw notes into a unified research workspace.
+              Collect PDFs, website content, YouTube transcripts, and notes in one organized workspace.
             </p>
           </div>
 
-          {/* Feature 2 */}
+          {/* Feature 2: Source-Grounded AI Chat */}
           <div className="rounded-3xl border border-border bg-card p-6 space-y-3 hover:border-primary/40 transition-all">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">
+              Get answers with context
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Ask questions about your materials and explore responses grounded in relevant source content.
+            </p>
+          </div>
+
+          {/* Feature 3: Source Citations */}
+          <div className="rounded-3xl border border-border bg-card p-6 space-y-3 hover:border-primary/40 transition-all">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <h3 className="text-base font-bold text-foreground">
-              Verified Footnote Citations
+              Trace answers back to their sources
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Every sentence in AI answers is backed by direct clickable footnotes linking to the exact excerpt in your source document.
+              Follow available source references to inspect the passages that support an answer.
             </p>
           </div>
 
-          {/* Feature 3 */}
+          {/* Feature 4: AI Summaries */}
           <div className="rounded-3xl border border-border bg-card p-6 space-y-3 hover:border-primary/40 transition-all">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">
+              Understand the key ideas faster
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Turn lengthy source material into concise summaries and structured explanations.
+            </p>
+          </div>
+
+          {/* Feature 5: Flashcards and Quizzes */}
+          <div className="rounded-3xl border border-border bg-card p-6 space-y-3 hover:border-primary/40 transition-all">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
               <Layers className="h-5 w-5" />
             </div>
             <h3 className="text-base font-bold text-foreground">
-              Learning Studio Tools
+              Practice what you&apos;ve learned
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Automatically create 3D flip flashcards, interactive quizzes with scorecards, mind map hierarchies, and briefing documents.
+              Turn source material into flashcards and quizzes to review concepts and test your understanding.
             </p>
           </div>
 
-          {/* Feature 4 */}
-          <div className="rounded-3xl border border-border bg-card p-6 space-y-3 hover:border-primary/40 transition-all">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <Brain className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold text-foreground">
-              Mem0 Long-Term Memory
-            </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              The AI remembers your background, study goals, preferred tone, and formatting constraints across all your notebooks.
-            </p>
-          </div>
-
-          {/* Feature 5 */}
-          <div className="rounded-3xl border border-border bg-card p-6 space-y-3 hover:border-primary/40 transition-all">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-              <Globe className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold text-foreground">
-              Live Web Intelligence
-            </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Toggle Tavily real-time web search alongside your private sources to synthesize the latest breaking news and benchmarks.
-            </p>
-          </div>
-
-          {/* Feature 6 */}
+          {/* Feature 6: Mind Maps */}
           <div className="rounded-3xl border border-border bg-card p-6 space-y-3 hover:border-primary/40 transition-all">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
-              <Zap className="h-5 w-5" />
+              <Network className="h-5 w-5" />
             </div>
             <h3 className="text-base font-bold text-foreground">
-              Multi-Model Selection
+              See how ideas connect
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Choose between GPT-4o, Claude 3.5 Sonnet, and GPT-4o Mini with real-time token streaming and reasoning.
+              Organize related concepts into a visual structure that helps you explore a topic.
             </p>
+          </div>
+
+          {/* Feature 7: Mem0 Long-Term Memory */}
+          <div className="rounded-3xl border border-border bg-card p-6 space-y-3 hover:border-primary/40 transition-all md:col-span-2 lg:col-span-3">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5">
+                <Brain className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-foreground">
+                  AI that remembers relevant context
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-3xl">
+                  Mem0-powered memory can preserve supported user preferences and useful context across interactions, helping the experience feel more personalized over time.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 5. HOW IT WORKS */}
+      {/* 5. HOW IT WORKS SECTION */}
       <section id="how-it-works" className="py-20 px-4 sm:px-8 border-y border-border/60 bg-muted/20">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center space-y-3 max-w-xl mx-auto">
             <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-              Simple 3-Step Workflow
+              HOW IT WORKS
             </span>
             <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">
-              How NotebookLM Works
+              From raw sources to real understanding.
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="rounded-2xl border border-border bg-card p-6 space-y-3 relative">
               <span className="font-mono text-3xl font-extrabold text-primary/40">01</span>
-              <h3 className="text-base font-bold text-foreground">Add Your Sources</h3>
+              <h3 className="text-base font-bold text-foreground">Add your sources</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Upload PDFs, paste web URLs, YouTube videos, or research notes. NotebookLM splits and indexes them into semantic vectors.
+                Upload documents, paste website URLs, add YouTube videos, or bring in your own notes.
               </p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-6 space-y-3 relative">
               <span className="font-mono text-3xl font-extrabold text-primary/40">02</span>
-              <h3 className="text-base font-bold text-foreground">Ask & Explore</h3>
+              <h3 className="text-base font-bold text-foreground">Ask and explore</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Chat naturally with your documents. The AI searches your specific sources and returns answers with clickable citations.
+                Ask questions about your materials and inspect the relevant context used to generate answers.
               </p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-6 space-y-3 relative">
               <span className="font-mono text-3xl font-extrabold text-primary/40">03</span>
-              <h3 className="text-base font-bold text-foreground">Generate Study Artifacts</h3>
+              <h3 className="text-base font-bold text-foreground">Create and revise</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Turn your sources into flashcard decks, quizzes with score tracking, mind maps, and structured study guides with 1 click.
+                Generate summaries, flashcards, quizzes, and mind maps from your sources, where supported.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 6. WHO USES NOTEBOOKLM */}
+      {/* 6. LEARNING STUDIO SECTION */}
+      <section id="studio" className="py-20 px-4 sm:px-8 max-w-6xl mx-auto w-full space-y-12">
+        <div className="text-center space-y-3 max-w-2xl mx-auto">
+          <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+            LEARNING STUDIO
+          </span>
+          <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">
+            One library. Multiple ways to learn.
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Move beyond reading. Turn your sources into structured summaries, interactive revision tools, and visual explanations.
+          </p>
+        </div>
+
+        {/* Tab Controls */}
+        <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2">
+          {[
+            { id: "summaries", label: "Summaries", icon: BookOpen },
+            { id: "flashcards", label: "Flashcards", icon: Layers },
+            { id: "quizzes", label: "Quizzes", icon: HelpCircle },
+            { id: "mindmaps", label: "Mind Maps", icon: Network },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const active = studioTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setStudioTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Interactive Studio Preview Container */}
+        <div className="max-w-4xl mx-auto rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-lg">
+          {studioTab === "summaries" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-blue-500" />
+                  <h4 className="text-sm font-bold text-foreground">Executive Summary & Key Takeaways</h4>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground">Generated from 4 sources</span>
+              </div>
+              <div className="space-y-3 text-xs leading-relaxed text-muted-foreground">
+                <p className="text-foreground font-semibold">
+                  Core Architecture: Transformers & Self-Attention Mechanisms
+                </p>
+                <ul className="space-y-2 list-disc pl-4">
+                  <li>
+                    <strong className="text-foreground">Sequential Bottlenecks Removed:</strong> Recurrent state propagation is discarded in favor of scaled dot-product attention computed in parallel.
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Positional Encodings:</strong> Sinusoidal embeddings provide spatial ordering information across tokens without sequential processing.
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Multi-Head Representation:</strong> Allows joint attendance across diverse representation subspaces at different positions simultaneously.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {studioTab === "flashcards" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-purple-500" />
+                  <h4 className="text-sm font-bold text-foreground">Interactive Concept Flashcards</h4>
+                </div>
+                <button
+                  onClick={() => setFlashcardFlipped(!flashcardFlipped)}
+                  className="flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline cursor-pointer"
+                >
+                  <RotateCw className="h-3.5 w-3.5" />
+                  <span>{flashcardFlipped ? "Show Question" : "Flip for Answer"}</span>
+                </button>
+              </div>
+
+              <div
+                onClick={() => setFlashcardFlipped(!flashcardFlipped)}
+                className="min-h-[160px] flex flex-col justify-center items-center text-center p-6 rounded-2xl border border-primary/20 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors"
+              >
+                {!flashcardFlipped ? (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Question</span>
+                    <p className="text-sm font-bold text-foreground max-w-md">
+                      Why do Transformer architectures utilize Positional Encodings?
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Click card to reveal answer</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Answer</span>
+                    <p className="text-xs text-foreground max-w-md leading-relaxed">
+                      Because self-attention operates across all tokens simultaneously without inherent sequence awareness, positional encodings inject token order into word embeddings.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {studioTab === "quizzes" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-amber-500" />
+                  <h4 className="text-sm font-bold text-foreground">Knowledge Check Quiz</h4>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground">Question 1 of 3</span>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-foreground">
+                  Which scaling factor is applied in Scaled Dot-Product Attention to prevent softmax saturation?
+                </p>
+
+                <div className="space-y-2">
+                  {[
+                    { text: "1 / d_k", correct: false },
+                    { text: "1 / √d_k", correct: true },
+                    { text: "√d_model", correct: false },
+                    { text: "log(d_k)", correct: false },
+                  ].map((opt, idx) => {
+                    const isSelected = selectedQuizOption === idx;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedQuizOption(idx)}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl text-xs font-medium border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-emerald-500/80 bg-emerald-500/10 text-foreground font-semibold"
+                            : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60"
+                        }`}
+                      >
+                        <span>{opt.text}</span>
+                        {isSelected && <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="p-3 rounded-xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">Explanation:</strong> For large key dimensions (d_k), dot products grow large in magnitude, pushing softmax into regions with small gradients. Dividing by √d_k stabilizes variance.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {studioTab === "mindmaps" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <Network className="h-4 w-4 text-teal-500" />
+                  <h4 className="text-sm font-bold text-foreground">Visual Concept Hierarchy</h4>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground">Concept Structure</span>
+              </div>
+
+              <div className="p-4 rounded-2xl border border-border/70 bg-muted/10 space-y-3 font-mono text-xs">
+                <div className="inline-block px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-bold shadow-xs">
+                  🧠 Transformer Architecture
+                </div>
+                <div className="pl-6 border-l-2 border-primary/30 space-y-3 pt-1">
+                  <div className="space-y-1">
+                    <span className="font-semibold text-foreground">├─ Attention Mechanisms</span>
+                    <div className="pl-6 text-muted-foreground space-y-0.5 text-[11px]">
+                      <p>├─ Scaled Dot-Product Attention</p>
+                      <p>└─ Multi-Head Parallel Projections</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-semibold text-foreground">├─ Sequence Modeling</span>
+                    <div className="pl-6 text-muted-foreground space-y-0.5 text-[11px]">
+                      <p>├─ Positional Encodings (Sinusoidal)</p>
+                      <p>└─ Masked Self-Attention in Decoders</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-semibold text-foreground">└─ Feed-Forward & Residuals</span>
+                    <div className="pl-6 text-muted-foreground space-y-0.5 text-[11px]">
+                      <p>└─ Layer Normalization & Residual Additions</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 7. USE CASES SECTION */}
       <section id="use-cases" className="py-20 px-4 sm:px-8 max-w-6xl mx-auto w-full space-y-12">
         <div className="text-center space-y-3 max-w-xl mx-auto">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Designed for Knowledge Workers
+            USE CASES
           </span>
           <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">
-            Built for Every Kind of Thinker
+            Built for the way you work and learn.
           </h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
-            <h4 className="text-sm font-bold text-foreground">🔬 Researchers</h4>
-            <p className="text-xs text-muted-foreground">
-              Compare conflicting literature, extract statistical methodologies, and cite verified sources.
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-2.5 hover:border-primary/40 transition-all">
+            <span className="text-2xl" role="img" aria-label="Researchers">🔬</span>
+            <h3 className="text-sm font-bold text-foreground">Researchers</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Explore papers, compare source material, and organize findings across multiple documents.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
-            <h4 className="text-sm font-bold text-foreground">🎓 Students</h4>
-            <p className="text-xs text-muted-foreground">
-              Master exam textbooks, convert lecture transcripts into flashcards, and test comprehension with quizzes.
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-2.5 hover:border-primary/40 transition-all">
+            <span className="text-2xl" role="img" aria-label="Students">🎓</span>
+            <h3 className="text-sm font-bold text-foreground">Students</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Understand course material, summarize lectures, and prepare for exams with source-based revision tools.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
-            <h4 className="text-sm font-bold text-foreground">💼 Founders & PMs</h4>
-            <p className="text-xs text-muted-foreground">
-              Synthesize user feedback interviews, market analysis reports, and investor pitch decks.
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-2.5 hover:border-primary/40 transition-all">
+            <span className="text-2xl" role="img" aria-label="Professionals">💼</span>
+            <h3 className="text-sm font-bold text-foreground">Professionals</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Extract useful information from reports, meeting notes, and business documents.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
-            <h4 className="text-sm font-bold text-foreground">💻 Engineers</h4>
-            <p className="text-xs text-muted-foreground">
-              Search API documentation, code guidelines, architecture RFCs, and troubleshooting playbooks.
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-2.5 hover:border-primary/40 transition-all">
+            <span className="text-2xl" role="img" aria-label="Developers">💻</span>
+            <h3 className="text-sm font-bold text-foreground">Developers</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Explore technical documentation, API references, and engineering notes through contextual questions.
             </p>
           </div>
         </div>
       </section>
 
-      {/* 7. FAQ SECTION */}
+      {/* 8. FAQ SECTION */}
       <section id="faq" className="py-20 px-4 sm:px-8 max-w-4xl mx-auto w-full space-y-8">
         <div className="text-center space-y-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Got Questions?
+            FREQUENTLY ASKED QUESTIONS
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Frequently Asked Questions
@@ -449,20 +678,28 @@ export default function AboutLandingPage() {
         <div className="space-y-3">
           {[
             {
-              q: "How does NotebookLM differ from standard ChatGPT or Claude?",
-              a: "Standard LLMs pull information from their general training data and can hallucinate. NotebookLM strictly grounds its reasoning in the specific source documents you provide, generating verified citations for every factual claim.",
+              q: "How is this different from a general-purpose AI chatbot?",
+              a: "General-purpose chatbots answer using broad pretraining data and can make unsupported claims. This workspace retrieves passages directly from the documents, articles, and notes you provide, anchoring answers in your specific reference materials.",
             },
             {
-              q: "What types of files and sources can I upload?",
-              a: "NotebookLM supports PDF documents, live web pages via Firecrawl scraping, YouTube video transcripts, and custom markdown notes.",
+              q: "Which sources and file types can I add?",
+              a: "You can upload PDF files, scrape public website articles, import YouTube video transcripts, and write or paste Markdown and plain text notes directly into each notebook workspace.",
             },
             {
-              q: "Is my personal research data private?",
-              a: "Yes. Your uploaded notes, sources, and conversation history are private to your account and never used to train public machine learning models.",
+              q: "How do source-grounded answers and citations work?",
+              a: "When you ask a question, the system searches your uploaded source chunks using vector similarity retrieval. The most relevant excerpts are supplied as context to the AI model, which formats responses with references pointing back to the supporting source material.",
             },
             {
-              q: "How do the Flashcards and Quiz generators work?",
-              a: "When you request a Quiz or Flashcards deck, our system parses key definitions, theorems, and concepts directly from your indexed sources and formats them into interactive 3D study tools.",
+              q: "What is Mem0 memory, and how does it personalize the experience?",
+              a: "Mem0 provides a dedicated long-term memory layer that stores supported user preferences, background context, and learning goals across sessions. Unlike source document retrieval which searches files within a workspace, Mem0 helps tailor the AI's tone and communication style to your individual preferences.",
+            },
+            {
+              q: "Can I generate summaries, flashcards, quizzes, and mind maps?",
+              a: "Yes. The Learning Studio tools allow you to transform the content of your selected workspace sources into structured summaries, interactive flip flashcards, multiple-choice quizzes with explanations, and concept mind maps.",
+            },
+            {
+              q: "How is my information stored and processed?",
+              a: "Your accounts and workspace metadata are stored in your PostgreSQL database, document embeddings are indexed in Pinecone vector storage, and file assets are handled securely. Language and embedding models process source excerpts to generate context-grounded responses when you interact with the workspace.",
             },
           ].map((item, idx) => (
             <div
@@ -471,7 +708,8 @@ export default function AboutLandingPage() {
             >
               <button
                 onClick={() => toggleFaq(idx)}
-                className="w-full flex items-center justify-between p-4 text-left text-xs sm:text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
+                className="w-full flex items-center justify-between p-4 text-left text-xs sm:text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
+                aria-expanded={openFaq === idx}
               >
                 <span>{item.q}</span>
                 <ChevronDown
@@ -490,43 +728,56 @@ export default function AboutLandingPage() {
         </div>
       </section>
 
-      {/* 8. BOTTOM CALL TO ACTION */}
+      {/* 9. FINAL CALL TO ACTION */}
       <section className="py-20 px-4 sm:px-8 border-t border-border bg-gradient-to-b from-background to-primary/5">
         <div className="max-w-3xl mx-auto text-center space-y-6">
           <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground">
-            Ready to Upgrade Your Research?
+            Make your sources work for you.
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto">
-            Join thousands of researchers, students, and professionals thinking deeper with grounded AI.
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
+            Bring your information together, ask better questions, and build a deeper understanding of what matters to you.
           </p>
-          <div className="pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Button
               size="lg"
               onClick={() => setAuthOpen(true)}
-              className="h-12 px-8 gap-3 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+              className="h-12 px-8 gap-3 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg active:scale-98 transition-all"
             >
               <GoogleLogo className="h-4 w-4 bg-white rounded-full p-0.5" />
-              <span>Get Started Free with Google</span>
+              <span>Create Your Workspace</span>
+            </Button>
+
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => router.push("/workspace/ws-ai-research")}
+              className="h-12 px-6 gap-2 text-sm font-medium border-border hover:bg-muted"
+            >
+              <Play className="h-4 w-4 text-emerald-500 fill-emerald-500/20" />
+              <span>Explore the Demo</span>
             </Button>
           </div>
         </div>
       </section>
 
-      {/* 9. FOOTER */}
+      {/* 10. FOOTER */}
       <footer className="py-8 px-4 sm:px-8 border-t border-border text-xs text-muted-foreground">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-foreground">NotebookLM Studio</span>
-            <span>• Powered by Gemini & GPT-4o</span>
+            <span className="font-semibold text-foreground">{APP_CONFIG.brandPrefix}{APP_CONFIG.brandSuffix} {APP_CONFIG.badge}</span>
+            <span>• {APP_CONFIG.tagline}</span>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/" className="hover:text-foreground transition-colors">
               Dashboard
             </Link>
             <Link href="/workspace/ws-ai-research" className="hover:text-foreground transition-colors">
-              Demo Notebook
+              Demo Workspace
             </Link>
+            <a href="#features" className="hover:text-foreground transition-colors">
+              Capabilities
+            </a>
             <button
               onClick={() => setAuthOpen(true)}
               className="hover:text-foreground transition-colors cursor-pointer"
