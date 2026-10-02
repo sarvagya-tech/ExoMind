@@ -47,6 +47,7 @@ import { useAuthUser, useSignOut } from "@/hooks/use-auth";
 import { MemoryDialog } from "@/components/memory/memory-dialog";
 import { CreateWorkspaceDialog } from "@/components/dashboard/create-workspace-dialog";
 import { AddSourceDialog } from "@/components/workspace/add-source-dialog";
+import { GoogleAuthDialog } from "@/components/auth/google-auth-dialog";
 
 export function Sidebar({
   currentWorkspace = null,
@@ -67,6 +68,7 @@ export function Sidebar({
   const [createWsOpen, setCreateWsOpen] = React.useState(false);
   const [addSourceOpen, setAddSourceOpen] = React.useState(false);
   const [memoryOpen, setMemoryOpen] = React.useState(false);
+  const [authOpen, setAuthOpen] = React.useState(false);
 
   // Data queries
   const { data: workspaces = [] } = useWorkspaces();
@@ -351,24 +353,64 @@ export function Sidebar({
 
         {/* Theme & User Profile Bar */}
         <div className={`flex items-center justify-between pt-1 ${collapsed ? "flex-col gap-2" : "px-1"}`}>
-          <div className="flex items-center gap-2 overflow-hidden">
-            <Avatar className="w-7 h-7 border border-border">
-              <AvatarImage src={user?.image} alt={user?.name || "User"} />
-              <AvatarFallback className="bg-muted text-foreground text-xs font-semibold">
-                {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
-              </AvatarFallback>
-            </Avatar>
-            {!collapsed && (
-              <div className="flex flex-col overflow-hidden leading-tight">
-                <span className="font-semibold text-foreground text-xs truncate">
-                  {user?.name || "Alex Vance"}
-                </span>
-                <span className="text-[10px] text-muted-foreground truncate">
-                  {user?.email || "alex@example.com"}
-                </span>
-              </div>
-            )}
-          </div>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 overflow-hidden hover:opacity-80 transition-opacity text-left cursor-pointer outline-none max-w-[170px]"
+                >
+                  <Avatar className="w-7 h-7 border border-border shrink-0">
+                    <AvatarImage src={user?.image} alt={user?.name || "User"} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                      {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!collapsed && (
+                    <div className="flex flex-col overflow-hidden leading-tight min-w-0">
+                      <span className="font-semibold text-foreground text-xs truncate">
+                        {user?.name || "User"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {user?.email}
+                      </span>
+                    </div>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 font-mono text-xs p-1.5">
+                <div className="px-2 py-1.5 border-b border-border/60 mb-1">
+                  <p className="font-semibold text-foreground truncate">{user?.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+                </div>
+                <DropdownMenuItem
+                  onClick={() => setMemoryOpen(true)}
+                  className="cursor-pointer gap-2"
+                >
+                  <Brain className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Memory Bank</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => signOut.mutate()}
+                  className="cursor-pointer gap-2 text-rose-500 focus:text-rose-500 focus:bg-rose-500/10"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAuthOpen(true)}
+              className="gap-1.5 text-xs font-semibold border-border h-8 px-2.5"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              {!collapsed && <span>Sign In</span>}
+            </Button>
+          )}
 
           <div className="flex items-center gap-1">
             <ModeToggle />
@@ -387,6 +429,11 @@ export function Sidebar({
         onOpenChange={setAddSourceOpen}
       />
       <MemoryDialog open={memoryOpen} onOpenChange={setMemoryOpen} />
+      <GoogleAuthDialog
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+        redirectUrl={pathname || "/"}
+      />
     </div>
   );
 

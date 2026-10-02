@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useQueryClient } from "@tanstack/react-query";
 import { authKeys } from "@/hooks/use-auth";
-import { API_BASE_URL } from "@/lib/backend-api";
+import { authApi } from "@/lib/api-client";
 
 // Google multi-colored G logo
 export function GoogleLogo({ className = "h-5 w-5" }) {
@@ -48,45 +48,41 @@ export function GoogleAuthDialog({ open, onOpenChange, redirectUrl = "/" }) {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-
     try {
-      // 1. Attempt Better-Auth social login endpoint if server is live
-      const googleAuthUrl = `${API_BASE_URL}/api/auth/sign-in/social?provider=google`;
-      
-      // Seed user session for local demo/frontend compatibility
-      const mockUser = {
-        id: "user-1",
-        name: "Alex Vance",
-        email: "alex.vance@example.com",
-        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&h=128&fit=crop&crop=faces",
-      };
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem(
-          "notebookllm_user",
-          JSON.stringify({ user: mockUser, session: { id: "sess-1" } })
-        );
-      }
-
-      // Update TanStack query cache
-      queryClient.setQueryData(authKeys.session, {
-        user: mockUser,
-        session: { id: "sess-1" },
-      });
-
-      // Show instant success feedback
-      setTimeout(() => {
-        setSuccess(true);
-        setTimeout(() => {
-          setLoading(false);
-          onOpenChange(false);
-          router.push(redirectUrl);
-        }, 600);
-      }, 700);
+      await authApi.signInWithGoogle(redirectUrl);
     } catch (err) {
       console.error("Google Auth error:", err);
       setLoading(false);
     }
+  };
+
+  const handleDemoSignIn = () => {
+    setLoading(true);
+    const mockUser = {
+      id: "user-1",
+      name: "Alex Vance",
+      email: "alex.vance@example.com",
+      image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&h=128&fit=crop&crop=faces",
+    };
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "notebookllm_user",
+        JSON.stringify({ user: mockUser, session: { id: "sess-1" } })
+      );
+    }
+
+    queryClient.setQueryData(authKeys.session, {
+      user: mockUser,
+      session: { id: "sess-1" },
+    });
+
+    setSuccess(true);
+    setTimeout(() => {
+      setLoading(false);
+      onOpenChange(false);
+      router.push(redirectUrl);
+    }, 600);
   };
 
   return (
@@ -143,7 +139,7 @@ export function GoogleAuthDialog({ open, onOpenChange, redirectUrl = "/" }) {
             </p>
 
             <button
-              onClick={handleGoogleSignIn}
+              onClick={handleDemoSignIn}
               disabled={loading}
               className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-card hover:border hover:border-primary/30 transition-all text-left cursor-pointer group"
             >

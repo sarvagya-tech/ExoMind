@@ -1090,60 +1090,73 @@ export const memoryApi = {
 export const authApi = {
   async getSession() {
     try {
-      return await request("/api/auth/get-session");
+      const res = await request("/api/auth/get-session");
+      if (res && res.user) {
+        return res;
+      }
+      return null;
     } catch {
-      const user = getLocal(STORAGE_KEY_USER, {
-        id: 1,
-        name: "Alex",
-        lastname: "Vance",
-        email: "alex.vance@example.com",
-        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      });
-      return { user, session: { id: "demo-session" } };
+      return null;
     }
   },
 
   async signIn({ email, password }) {
-    try {
-      return await request("/api/auth/sign-in/email", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-    } catch {
-      const user = {
-        id: 1,
-        name: email.split("@")[0] || "User",
-        email,
-        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      };
-      setLocal(STORAGE_KEY_USER, user);
-      return { user };
-    }
+    return await request("/api/auth/sign-in/email", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
   },
 
   async signUp({ name, email, password }) {
+    return await request("/api/auth/sign-up/email", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    });
+  },
+
+  async signInWithGoogle(callbackURL = "/") {
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3005";
+    const fullCallbackURL = callbackURL.startsWith("http") ? callbackURL : `${origin}${callbackURL}`;
+
     try {
-      return await request("/api/auth/sign-up/email", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/sign-in/social`, {
         method: "POST",
-        body: JSON.stringify({ name, email, password }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          provider: "google",
+          callbackURL: fullCallbackURL,
+        }),
       });
-    } catch {
-      const user = {
-        id: Date.now(),
-        name: name || "User",
-        email,
-        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      };
-      setLocal(STORAGE_KEY_USER, user);
-      return { user };
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.url) {
+          window.location.href = data.url;
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Direct social sign-in failed, navigating directly:", err);
     }
+
+    // Fallback direct GET navigation to Better Auth social endpoint
+    window.location.href = `${API_BASE_URL}/api/auth/sign-in/social?provider=google&callbackURL=${encodeURIComponent(fullCallbackURL)}`;
   },
 
   async signOut() {
     try {
-      return await request("/api/auth/sign-out", { method: "POST" });
-    } catch {
-      return { success: true };
+      await fetch(`${API_BASE_URL}/api/auth/sign-out`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (e) {
+      console.warn("Sign out error:", e);
     }
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("notebookllm_user");
+      window.location.href = "/about";
+    }
+    return { success: true };
   },
 };

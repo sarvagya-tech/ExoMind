@@ -27,7 +27,11 @@ app.use((req, res, next) => {
     next();
 });
 
+import http from "http";
+
 app.all("/api/auth/*any", toNodeHandler(auth));
+app.use("/api/auth", toNodeHandler(auth));
+
 // Mount express json middleware after Better Auth handler
 // or only apply it to routes that don't interact with Better Auth
 app.use(express.json());
@@ -44,5 +48,27 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
     console.log(`server is running on the portnumber ${port}`);
 });
+
+// If port 3000 is accessed by legacy OAuth redirect URIs, bridge them directly to port 3001
+if (Number(port) !== 3000) {
+    try {
+        const bridge = http.createServer((req, res) => {
+            const targetUrl = `http://localhost:3001${req.url}`;
+            res.writeHead(307, {
+                Location: targetUrl,
+                "Access-Control-Allow-Origin": "*",
+            });
+            res.end();
+        });
+
+        bridge.listen(3000, () => {
+            console.log("OAuth bridge listening on port 3000 -> forwarding to port 3001");
+        }).on("error", (err) => {
+            if (err.code !== "EADDRINUSE") {
+                console.warn("Port 3000 bridge notice:", err.message);
+            }
+        });
+    } catch (e) {}
+}
 
 export { app };

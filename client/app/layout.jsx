@@ -20,6 +20,8 @@ export const metadata = {
   description: "Source-grounded research workspaces, grounded citations, and study studio.",
 };
 
+import { AuthGuard } from "@/components/auth/auth-guard";
+
 export default function RootLayout({ children }) {
   return (
     <html
@@ -42,7 +44,7 @@ export default function RootLayout({ children }) {
           disableTransitionOnChange
         >
           <QueryProvider>
-            {children}
+            <AuthGuard>{children}</AuthGuard>
           </QueryProvider>
         </ThemeProvider>
       </body>

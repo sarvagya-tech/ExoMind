@@ -34,6 +34,12 @@ export function useSignUp() {
   });
 }
 
+export function useGoogleSignIn() {
+  return useMutation({
+    mutationFn: (callbackURL) => authApi.signInWithGoogle(callbackURL),
+  });
+}
+
 export function useSignOut() {
   const queryClient = useQueryClient();
 
@@ -44,3 +50,4 @@ export function useSignOut() {
     },
   });
 }
+
