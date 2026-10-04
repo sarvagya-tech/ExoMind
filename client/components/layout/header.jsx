@@ -163,7 +163,7 @@ export function Header({ currentWorkspace = null }) {
                   <Brain className="h-3.5 w-3.5 mr-2 text-purple-500" />
                   <span>Personal Memories</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/")}>
+                <DropdownMenuItem onClick={() => router.push("/dashboard")}>
                   <FolderOpen className="h-3.5 w-3.5 mr-2" />
                   <span>All Notebooks</span>
                 </DropdownMenuItem>

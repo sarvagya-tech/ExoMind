@@ -13,14 +13,14 @@ export function AuthGuard({ children }) {
   const { data: authData, isLoading } = useAuthUser();
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false);
 
-  // If on public pages like /about, skip guard
-  const isPublicPage = pathname === "/about";
+  // If on public pages like / or /about, skip guard
+  const isPublicPage = pathname === "/" || pathname === "/about";
 
   const isAuthenticated = !!(authData && authData.user);
 
   React.useEffect(() => {
     if (!isLoading && !isAuthenticated && !isPublicPage) {
-      // Prompt sign in modal or redirect to /about
+      // Prompt sign in modal
       setAuthDialogOpen(true);
     }
   }, [isLoading, isAuthenticated, isPublicPage]);
@@ -82,7 +82,7 @@ export function AuthGuard({ children }) {
 
             <Button
               variant="outline"
-              onClick={() => router.push("/about")}
+              onClick={() => router.push("/")}
               className="w-full h-10 text-xs font-medium border-border hover:bg-muted"
             >
               <span>Explore Features & About</span>
@@ -98,7 +98,7 @@ export function AuthGuard({ children }) {
         <GoogleAuthDialog
           open={authDialogOpen}
           onOpenChange={setAuthDialogOpen}
-          redirectUrl={pathname || "/"}
+          redirectUrl={pathname && pathname !== "/" ? pathname : "/dashboard"}
         />
       </div>
     );

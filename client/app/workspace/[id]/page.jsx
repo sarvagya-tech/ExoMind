@@ -67,7 +67,7 @@ export default function WorkspaceStudioPage() {
           </p>
           <Button
             size="sm"
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/dashboard")}
             className="gap-2 bg-primary text-primary-foreground mt-2"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard

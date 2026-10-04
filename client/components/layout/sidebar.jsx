@@ -167,9 +167,9 @@ export function Sidebar({
 
               {/* Dashboard Link */}
               <Link
-                href="/"
+                href="/dashboard"
                 className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl transition-all ${
-                  pathname === "/"
+                  pathname === "/dashboard"
                     ? "bg-primary/15 text-primary font-semibold border border-primary/25 shadow-2xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 } ${collapsed ? "justify-center px-2" : ""}`}
@@ -325,7 +325,7 @@ export function Sidebar({
         <Link
           href="/about"
           className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors text-left ${
-            pathname === "/about"
+            pathname === "/about" || pathname === "/"
               ? "bg-primary/15 text-primary font-semibold border border-primary/25 shadow-2xs"
               : ""
           } ${collapsed ? "justify-center px-2" : ""}`}
@@ -432,7 +432,7 @@ export function Sidebar({
       <GoogleAuthDialog
         open={authOpen}
         onOpenChange={setAuthOpen}
-        redirectUrl={pathname || "/"}
+        redirectUrl={pathname && pathname !== "/" ? pathname : "/dashboard"}
       />
     </div>
   );
