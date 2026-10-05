@@ -1,10 +1,10 @@
 export const APP_CONFIG = {
-  name: "NotebookLM",
-  brandPrefix: "Notebook",
-  brandSuffix: "LM",
-  badge: "Studio",
-  tagline: "Your Personal AI Knowledge Workspace",
-  headline: "Your sources. One intelligent workspace.",
+  name: "ExoMind",
+  brandPrefix: "Exo",
+  brandSuffix: "Mind",
+  badge: "AI",
+  tagline: "Turn your sources into understanding",
+  headline: "Turn your sources into understanding.",
   subheadline: "Bring together PDFs, websites, YouTube videos, and notes. Ask questions, explore ideas, and turn information into knowledge you can use.",
   microcopy: "From scattered sources to clearer understanding.",
 };

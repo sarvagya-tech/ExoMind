@@ -1,5 +1,5 @@
 /**
- * Unified Backend API Connector for NotebookLM Frontend
+ * Unified Backend API Connector for ExoMind Frontend
  * Handles HTTP requests, file uploads, SSE chat streams, and transparent fallback.
  */
 

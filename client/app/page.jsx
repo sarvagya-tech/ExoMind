@@ -144,7 +144,7 @@ export default function HomePage() {
           {/* Eyebrow */}
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>YOUR PERSONAL AI KNOWLEDGE WORKSPACE</span>
+            <span>TURN YOUR SOURCES INTO UNDERSTANDING</span>
           </div>
 
           {/* Main Headline */}

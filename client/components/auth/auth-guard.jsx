@@ -39,7 +39,7 @@ export function AuthGuard({ children }) {
           </div>
           <div className="space-y-1">
             <p className="text-sm font-bold text-foreground tracking-tight">
-              Notebook<span className="text-primary">LM</span> Studio
+              Exo<span className="text-primary">Mind</span> AI
             </p>
             <p className="text-xs text-muted-foreground">
               Verifying authenticated session...
@@ -91,7 +91,7 @@ export function AuthGuard({ children }) {
           </div>
 
           <p className="text-[11px] text-muted-foreground/70">
-            NotebookLM ensures your research notes and data are strictly private to your account.
+            ExoMind ensures your research notes and data are strictly private to your account.
           </p>
         </div>
 

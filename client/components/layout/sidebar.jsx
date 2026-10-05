@@ -110,10 +110,10 @@ export function Sidebar({
             {!collapsed && (
               <div className="flex items-center gap-1 overflow-hidden">
                 <span className="font-semibold tracking-tight text-foreground text-sm truncate">
-                  Notebook<span className="text-primary font-bold">LM</span>
+                  Exo<span className="text-primary font-bold">Mind</span>
                 </span>
                 <span className="rounded-full bg-primary/10 px-1.5 py-0.2 text-[9px] font-semibold text-primary border border-primary/20">
-                  Studio
+                  AI
                 </span>
               </div>
             )}
@@ -321,7 +321,7 @@ export function Sidebar({
 
       {/* Bottom Actions & User Profile */}
       <div className="p-3 pb-6 border-t border-border space-y-2 bg-card/40">
-        {/* About NotebookLM Page Link */}
+        {/* About ExoMind Page Link */}
         <Link
           href="/about"
           className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors text-left ${
@@ -329,11 +329,11 @@ export function Sidebar({
               ? "bg-primary/15 text-primary font-semibold border border-primary/25 shadow-2xs"
               : ""
           } ${collapsed ? "justify-center px-2" : ""}`}
-          title="About NotebookLM"
+          title="About ExoMind"
         >
           <Sparkles className="h-4 w-4 text-primary shrink-0" />
           {!collapsed && (
-            <span className="truncate flex-1 font-medium">About NotebookLM</span>
+            <span className="truncate flex-1 font-medium">About ExoMind</span>
           )}
         </Link>
 

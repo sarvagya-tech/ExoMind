@@ -94,7 +94,7 @@ export function GoogleAuthDialog({ open, onOpenChange, redirectUrl = "/" }) {
               <Sparkles className="h-4 w-4" />
             </div>
             <span className="font-semibold text-base tracking-tight">
-              Notebook<span className="text-primary font-bold">LM</span>
+              Exo<span className="text-primary font-bold">Mind</span>
             </span>
           </div>
 
@@ -165,7 +165,7 @@ export function GoogleAuthDialog({ open, onOpenChange, redirectUrl = "/" }) {
           <div className="flex items-start gap-2 text-[11px] text-muted-foreground/80 px-1 pt-1">
             <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
             <p className="leading-tight">
-              NotebookLM never uses your private source notes or documents to train foundational AI models.
+              ExoMind never uses your private source notes or documents to train foundational AI models.
             </p>
           </div>
         </div>

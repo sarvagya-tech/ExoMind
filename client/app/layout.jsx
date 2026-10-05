@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "NotebookLM Studio - Personal AI Knowledge Workspace",
+  title: "ExoMind - Turn your sources into understanding",
   description:
     "Bring together PDFs, websites, YouTube videos, and notes. Ask questions, explore ideas, and turn information into knowledge you can use with source-grounded AI.",
 };

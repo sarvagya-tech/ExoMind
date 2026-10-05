@@ -54,10 +54,10 @@ export function Header({ currentWorkspace = null }) {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold tracking-tight text-foreground text-sm sm:text-base">
-                  Notebook<span className="text-primary font-bold">LM</span>
+                  Exo<span className="text-primary font-bold">Mind</span>
                 </span>
                 <span className="hidden sm:inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary border border-primary/20">
-                  Studio
+                  AI
                 </span>
               </div>
             </Link>
@@ -157,7 +157,7 @@ export function Header({ currentWorkspace = null }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push("/about")}>
                   <Sparkles className="h-3.5 w-3.5 mr-2 text-primary" />
-                  <span>About NotebookLM</span>
+                  <span>About ExoMind</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setMemoryOpen(true)}>
                   <Brain className="h-3.5 w-3.5 mr-2 text-purple-500" />
